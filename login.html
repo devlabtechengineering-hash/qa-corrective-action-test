@@ -1,9 +1,11 @@
 <!doctype html>
-<html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="th"><head>
+  <!-- QA V33.1.0 navigation/status patch -->
+  <meta name="qa-page" content="login"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QA Corrective Action - Sign in</title>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-api.js"></script>
+<script src="supabase-api.js?v=33.1.0"></script>
 <style>
 *{box-sizing:border-box}body{font-family:Arial,Tahoma,sans-serif;background:#f4f6f8;color:#222;margin:0;padding:48px 18px}
 main{background:white;border-radius:12px;max-width:460px;margin:5vh auto;padding:32px;box-shadow:0 2px 14px #0001}
@@ -17,4 +19,4 @@ small{display:block;margin-top:24px;color:#666;line-height:1.6}
 <label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required>
 <button id="loginBtn" type="submit">เข้าสู่ระบบ / Sign in</button><div id="loginError" role="alert"></div></form>
 <small>ผู้ดูแลต้องสร้างบัญชีและกำหนดสิทธิ์ใน qa_profiles ก่อนใช้งาน<br>No public sign-up. No administrator keys in this page.</small>
-</main></body></html>
+<small id="qa-release-version">V33.1.0</small></main></body></html>

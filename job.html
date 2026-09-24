@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
+  <!-- QA V33.1.0 navigation/status patch -->
+  <meta name="qa-page" content="job">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js"></script>
-  <script src="navigation.js"></script>
+  <script src="supabase-api.js?v=33.1.0"></script>
+  <script src="navigation.js?v=33.1.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
-  <base target="_top">
+  <base target="_self">
 
   <meta name="viewport"
         content="width=device-width, initial-scale=1">
 
   <style>
-
     * {
       box-sizing: border-box;
     }
@@ -29,13 +29,13 @@
     }
 
     .header {
-      background: white;
+      background: #fff;
       border-bottom: 1px solid #ddd;
       padding: 20px;
     }
 
     .header-inner {
-      max-width: 900px;
+      max-width: 950px;
       margin: auto;
     }
 
@@ -45,19 +45,19 @@
     }
 
     .header p {
-      color: #666;
       margin: 6px 0 0;
+      color: #666;
     }
 
     .container {
-      max-width: 900px;
+      max-width: 950px;
       margin: 25px auto;
       padding: 0 15px 50px;
     }
 
     .card {
-      background: white;
-      padding: 25px;
+      background: #fff;
+      padding: 24px;
       border-radius: 12px;
       margin-bottom: 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,.08);
@@ -71,10 +71,103 @@
       border-bottom: 1px solid #eee;
     }
 
+    .job-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .job-id {
+      font-size: 25px;
+      font-weight: bold;
+    }
+
+    .status {
+      white-space:normal;
+      overflow-wrap:anywhere;
+      line-height:1.5;
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-weight: bold;
+      background: #eee;
+    }
+
+    .status.OPEN {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status.IN_PROGRESS {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status.WAITING_QA {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    .status.REWORK {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status.CLOSED {
+      background: #dcfce7;
+      color: #166534;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 18px;
+    }
+
+    .info-label {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .info-value {
+      font-size: 16px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .image-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fill, minmax(180px, 1fr));
+      gap: 15px;
+    }
+
+    .image-card {
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 9px;
+    }
+
+    .image-card img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .image-description {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #555;
+      word-break: break-word;
     }
 
     .field {
@@ -88,18 +181,17 @@
     }
 
     input,
-    select,
     textarea {
       width: 100%;
       padding: 11px;
       border: 1px solid #ccc;
       border-radius: 7px;
       font-size: 15px;
-      background: white;
+      background: #fff;
     }
 
     textarea {
-      min-height: 120px;
+      min-height: 110px;
       resize: vertical;
     }
 
@@ -110,13 +202,9 @@
     .upload-box {
       border: 2px dashed #bbb;
       border-radius: 10px;
-      padding: 22px;
+      padding: 20px;
       text-align: center;
       background: #fafafa;
-    }
-
-    .upload-box input {
-      margin-top: 12px;
     }
 
     .preview-grid {
@@ -124,14 +212,13 @@
       grid-template-columns:
         repeat(auto-fill, minmax(180px, 1fr));
       gap: 15px;
-      margin-top: 20px;
+      margin-top: 18px;
     }
 
     .preview-item {
       border: 1px solid #ddd;
       border-radius: 9px;
       padding: 10px;
-      background: white;
     }
 
     .preview-item img {
@@ -142,43 +229,59 @@
       margin-bottom: 8px;
     }
 
-    .preview-item input {
-      margin-bottom: 8px;
-    }
-
     .remove-btn {
       width: 100%;
-      padding: 8px;
-      background: #eee;
-      border: none;
+      border: 0;
       border-radius: 6px;
+      padding: 8px;
       cursor: pointer;
     }
 
-    .button-area {
-      text-align: right;
-      margin-top: 25px;
+    .button-row {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
     }
 
-    #submitBtn {
-      padding: 13px 30px;
-      border: 0;
+    button {
+      padding: 12px 20px;
       border-radius: 8px;
-      background: #222;
-      color: white;
-      font-size: 16px;
+      border: 0;
+      font-size: 15px;
       font-weight: bold;
       cursor: pointer;
     }
 
-    #submitBtn:disabled {
+    button:disabled {
       opacity: .5;
       cursor: not-allowed;
     }
 
+    .primary {
+      background: #222;
+      color: #fff;
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: #222;
+    }
+
+    .submit {
+      background: #166534;
+      color: #fff;
+    }
+
+    .accept {
+      background: #1d4ed8;
+      color: #fff;
+    }
+
     .message {
       display: none;
-      padding: 18px;
+      padding: 15px;
       border-radius: 8px;
       margin-bottom: 20px;
     }
@@ -193,737 +296,1676 @@
       color: #b71c1c;
     }
 
-    .job-number {
-      font-size: 25px;
-      font-weight: bold;
-      margin-top: 8px;
-    }
-
-    .upload-status {
-      margin-top: 8px;
-      font-size: 14px;
+    .loading {
+      text-align: center;
+      padding: 50px;
       color: #666;
     }
 
-    @media(max-width:650px) {
+    .empty {
+      color: #777;
+    }
 
-      .grid {
+    .history-card {
+      border: 1px solid #e5e7eb;
+      border-left: 5px solid #64748b;
+      border-radius: 9px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: #fafafa;
+    }
+
+    .history-round {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+
+    .history-result {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 5px 10px;
+      border-radius: 14px;
+      font-weight: bold;
+      background: #eee;
+    }
+
+    @media(max-width:650px) {
+.grid {
         grid-template-columns: 1fr;
+      }
+
+      .full {
+        grid-column: auto;
       }
 
       .card {
         padding: 18px;
       }
 
+      .button-row button {
+        width: 100%;
+      }
     }
-
   </style>
-
+  <script src="report.js"></script>
 </head>
 
 <body class="qa-auth-loading">
 
 <div class="header">
-
   <div class="header-inner">
-
     <h1>QA Corrective Action</h1>
-
-    <p>
-      ใบแจ้งปัญหาระหว่างแผนก
-      (Inter-Department Problem Notice)
-    </p>
-
+    <p>รายละเอียดใบแจ้งปัญหา / การดำเนินการแก้ไข</p>
   </div>
-
 </div>
 
 <div class="container">
 
-<div id="messageBox"
-     class="message"></div>
+  <div id="messageBox" class="message"></div>
 
-<form id="jobForm">
-
-<!-- ================= GENERAL ================= -->
-
-<div class="card">
-
-  <div class="section-title">
-    1. ข้อมูลการแจ้งเรื่อง
+  <div id="loadingBox" class="card loading">
+    กำลังโหลดข้อมูลใบงาน...
   </div>
 
-  <div class="grid">
+  <div id="mainContent" style="display:none;">
 
-    <div class="field">
+    <!-- JOB HEADER -->
+    <div class="card">
+      <div class="job-header">
 
-      <label>
-        ผู้แจ้ง
-        <span class="required">*</span>
-      </label>
+        <div>
+          <div class="info-label">JOB ID</div>
+          <div id="jobIdDisplay" class="job-id"></div>
+        </div>
 
-      <input
-        id="issuerName"
-        type="text"
-        value=""
-        required>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <span id="statusDisplay" class="status" role="status" aria-live="polite"></span>
+
+          <button
+            id="exportPdfBtn"
+            type="button"
+            onclick="exportPdf()"
+            style="background:#334155;color:white;padding:9px 14px;">
+            Export PDF
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- QA INFORMATION -->
+    <div class="card">
+
+      <div class="section-title">
+        1. ข้อมูลใบแจ้งปัญหา
+      </div>
+
+      <div class="grid">
+
+        <div>
+          <div class="info-label">ผู้แจ้ง</div>
+          <div id="issuerName" class="info-value"></div>
+        </div>
+
+        <div>
+          <div class="info-label">แผนกที่รับแจ้ง</div>
+          <div id="toDepartment" class="info-value"></div>
+        </div>
+
+        <div>
+          <div class="info-label">Serial Number</div>
+          <div id="serialNo" class="info-value"></div>
+        </div>
+
+        <div>
+          <div class="info-label">วันที่แจ้ง</div>
+          <div id="createdDateTime" class="info-value"></div>
+        </div>
+
+        <div>
+          <div class="info-label">ประเภทปัญหา</div>
+          <div id="category" class="info-value"></div>
+        </div>
+
+        <div>
+          <div class="info-label">ความเร่งด่วน</div>
+          <div id="priority" class="info-value"></div>
+        </div>
+
+        <div>
+          <div class="info-label">ผลกระทบ</div>
+          <div id="impact" class="info-value"></div>
+        </div>
+
+        <div>
+          <div class="info-label">สถานที่ / ไลน์</div>
+          <div id="location" class="info-value"></div>
+        </div>
+
+        <div>
+          <div class="info-label">Downtime</div>
+          <div id="downtimeMin" class="info-value"></div>
+        </div>
+
+        <div class="full">
+          <div class="info-label">รายละเอียดปัญหา</div>
+          <div id="problemDetail" class="info-value"></div>
+        </div>
+
+      </div>
 
     </div>
 
-    <div class="field">
+    <!-- BEFORE IMAGES -->
+    <div class="card">
 
-      <label>แผนกผู้แจ้ง</label>
+      <div class="section-title">
+        2. รูปภาพปัญหา (BEFORE)
+      </div>
 
-      <input
-        type="text"
-        value="QA"
-        disabled>
-
-    </div>
-
-    <div class="field">
-
-      <label>
-        แผนกที่รับแจ้ง
-        <span class="required">*</span>
-      </label>
-
-      <select
-        id="toDepartment"
-        required>
-
-        <option value="">
-          -- เลือกแผนก --
-        </option>
-
-      </select>
+      <div id="beforeImages" class="image-grid"></div>
 
     </div>
 
-    <div class="field">
+    <!-- ACCEPT -->
+    <div id="acceptCard" class="card" style="display:none;">
 
-      <label>
-        Serial Number
-      </label>
+      <div class="section-title">
+        3. รับงาน
+      </div>
 
-      <input
-        id="serialNo"
-        type="text">
+      <p>
+        งานนี้ยังอยู่ในสถานะ OPEN
+        เมื่อเริ่มดำเนินการให้กดปุ่มรับงาน
+      </p>
+
+      <div class="button-row">
+        <button
+          id="acceptBtn"
+          class="accept"
+          type="button"
+          onclick="acceptCurrentJob()">
+          รับงาน / เริ่มดำเนินการ
+        </button>
+      </div>
 
     </div>
 
+    <!-- CORRECTIVE HISTORY -->
+    <div id="correctiveHistoryCard" class="card" style="display:none;">
+      <div class="section-title">
+        การแก้ไขที่ส่งแล้ว / Submitted Corrective Actions
+      </div>
+      <p style="color:#666;margin-top:-8px;">
+        ข้อมูลในส่วนนี้ถูกล็อกแล้ว ไม่สามารถแก้ไขย้อนหลังได้
+      </p>
+      <div id="correctiveHistoryList"></div>
+    </div>
+
+    <!-- CORRECTIVE -->
+    <!-- ================= REWORK FEEDBACK ================= -->
+
+<div id="reworkCard"
+     class="card"
+     style="display:none;
+            border-left:5px solid #dc2626;">
+
+  <div class="section-title"
+       style="color:#b91c1c;">
+    ⚠ QA ส่งกลับให้แก้ไข
   </div>
+
+  <div class="info-label">
+    ข้อเสนอแนะ / เหตุผลจาก QA
+  </div>
+
+  <div id="reworkComment"
+       class="info-value"
+       style="margin-top:8px;
+              padding:15px;
+              background:#fef2f2;
+              border-radius:8px;">
+  </div>
+
+  <p style="margin-bottom:0;
+            margin-top:15px;
+            color:#666;">
+    การแก้ไขรอบก่อนถูกล็อกไว้แล้ว
+    กรุณากรอกการแก้ไขเพิ่มเติมเป็นรอบใหม่ด้านล่าง
+    แล้วส่งให้ QA ตรวจอีกครั้ง
+  </p>
 
 </div>
+    <div id="correctiveCard" class="card" style="display:none;">
 
-<!-- ================= PROBLEM ================= -->
+      <div id="editableSectionTitle" class="section-title">
+        3. การแก้ไขและป้องกัน
+      </div>
 
-<div class="card">
+      <div class="grid">
+
+        <div class="field">
+          <label>
+            ผู้รับผิดชอบ
+            <span class="required">*</span>
+          </label>
+
+          <input
+            id="assigneeName"
+            type="text">
+        </div>
+
+        <div class="field">
+          <label>กำหนดเสร็จ</label>
+
+          <input
+            id="targetDate"
+            type="date">
+        </div>
+
+      </div>
+
+      <div class="field">
+        <label id="correctiveActionLabel">
+          การแก้ไขเบื้องต้น / Corrective Action
+          <span class="required">*</span>
+        </label>
+
+        <textarea id="initialAction"></textarea>
+      </div>
+
+      <div class="field">
+        <label id="preventiveActionLabel">
+          การป้องกันไม่ให้เกิดซ้ำ / Preventive Action
+        </label>
+
+        <textarea id="preventiveAction"></textarea>
+      </div>
+      <div class="section-title" id="afterSectionTitle">
+        รูปภาพหลังดำเนินการ (AFTER)
+      </div>
+
+      <div class="upload-box">
+
+        <strong>เพิ่มรูปภาพหลังแก้ไข</strong>
+
+        <p style="color:#666;font-size:14px;">
+          สามารถเลือกหลายรูปจากโทรศัพท์หรือคอมพิวเตอร์
+        </p>
+
+        <input
+          id="afterImageInput"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple>
+
+      </div>
+
+      <div
+        id="afterPreviewGrid"
+        class="preview-grid">
+      </div>
+
+      <div class="button-row">
+
+        <button
+          id="saveBtn"
+          class="secondary"
+          type="button"
+          onclick="saveWork(false)">
+          บันทึกไว้ก่อน
+        </button>
+
+        <button
+          id="submitQaBtn"
+          class="submit"
+          type="button"
+          onclick="saveWork(true)">
+          ส่งให้ QA ตรวจ
+        </button>
+
+      </div>
+
+    </div>
+
+<!-- ================= QA VERIFICATION ================= -->
+
+<div id="qaCard"
+     class="card"
+     style="display:none;">
 
   <div class="section-title">
-    2. รายละเอียดปัญหาที่พบ
+    QA Verification / ผลการตรวจสอบ
   </div>
 
-  <div class="grid">
+  <div class="field">
 
-    <div class="field">
+    <label>
+      ผู้ตรวจสอบ QA
+      <span class="required">*</span>
+    </label>
 
-      <label>
-        ประเภทปัญหา
-        <span class="required">*</span>
-      </label>
-
-      <select
-        id="category"
-        required>
-
-        <option value="">
-          -- เลือกประเภท --
-        </option>
-
-      </select>
-
-    </div>
-
-    <div class="field">
-
-      <label>
-        ความเร่งด่วน
-      </label>
-
-      <select id="priority">
-
-        <option value="">
-          -- เลือกความเร่งด่วน --
-        </option>
-
-      </select>
-
-    </div>
-
-    <div class="field">
-
-      <label>ผลกระทบ</label>
-
-      <input
-        id="impact"
-        type="text">
-
-    </div>
-
-    <div class="field">
-
-      <label>สถานที่ / ไลน์</label>
-
-      <input
-        id="location"
-        type="text">
-
-    </div>
-
-    <div class="field">
-
-      <label>Downtime (นาที)</label>
-
-      <input
-        id="downtimeMin"
-        type="number"
-        min="0">
-
-    </div>
+    <input
+      id="qaInspector"
+      type="text"
+      value=""
+      placeholder="ชื่อผู้ตรวจสอบ">
 
   </div>
 
   <div class="field">
 
     <label>
-      รายละเอียดปัญหา
-      <span class="required">*</span>
+      ความเห็น / ข้อเสนอแนะของ QA
     </label>
 
     <textarea
-      id="problemDetail"
-      required></textarea>
+      id="qaComment"
+      placeholder="รายละเอียดผลการตรวจสอบ หรือเหตุผลกรณีส่งกลับแก้ไข"></textarea>
 
   </div>
 
-</div>
-
-<!-- ================= IMAGE ================= -->
-
-<div class="card">
-
-  <div class="section-title">
-    3. รูปภาพปัญหา
-  </div>
-
-  <div class="upload-box">
-
-    <strong>
-      เพิ่มรูปภาพ
-    </strong>
-
-    <div class="upload-status">
-      สามารถเลือกได้หลายรูปพร้อมกัน
-    </div>
-
-    <input
-      id="imageInput"
-      type="file"
-      accept="image/jpeg,image/png,image/webp"
-      multiple>
-
-  </div>
-
-  <div
-    id="previewGrid"
-    class="preview-grid">
-  </div>
-
-</div>
-
-<!-- ================= BUTTON ================= -->
-
-<div class="card">
-
-  <div class="button-area">
+  <div class="button-row">
 
     <button
-      id="submitBtn"
-      type="submit">
+      id="rejectBtn"
+      type="button"
+      style="background:#b91c1c;color:white;"
+      onclick="submitQaResult(false)">
 
-      แจ้งปัญหา
+      ไม่ผ่าน / ส่งกลับแก้ไข
+
+    </button>
+
+    <button
+      id="approveBtn"
+      type="button"
+      class="submit"
+      onclick="submitQaResult(true)">
+
+      ผ่าน / ปิดงาน
 
     </button>
 
   </div>
 
 </div>
+    <!-- WAITING -->
+    <div id="waitingCard"
+         class="card"
+         style="display:none;">
 
-</form>
+      <div class="section-title">
+        รอ QA ตรวจสอบ
+      </div>
+
+      <p>
+        ฝ่ายผู้รับผิดชอบส่งผลการแก้ไขแล้ว
+        ขณะนี้งานอยู่ระหว่างรอ QA ตรวจสอบ
+      </p>
+
+    </div>
+
+    <!-- CLOSED -->
+    <div id="closedCard"
+         class="card"
+         style="display:none;">
+
+      <div class="section-title">
+        งานเสร็จสิ้น
+      </div>
+
+      <p>
+        QA ตรวจสอบและปิดงานนี้แล้ว
+      </p>
+
+    </div>
+
+  </div>
 
 </div>
 
 <script>
 
-let selectedFiles = [];
+  const JOB_ID = QA.jobIdFromUrl();
 
-/* =====================================================
-   START
-===================================================== */
+  let currentJob = null;
+  let afterFiles = [];
+  let pdfPreviewWindow = null;
 
-document.addEventListener(
-  'DOMContentLoaded',
-  loadSettings
-);
+  document.addEventListener(
+    'DOMContentLoaded',
+    function() {
 
-/* =====================================================
-   SETTINGS
-===================================================== */
+      if (!JOB_ID) {
 
-function loadSettings() {
+        showJobLoadError('ไม่พบหมายเลขใบงานในลิงก์ กรุณาเลือกจากหน้าค้นหาใบงาน');
 
-  QA.run
-
-    .withSuccessHandler(function(data) {
-
-      fillSelect(
-        'toDepartment',
-        data.departments
-      );
-
-      fillSelect(
-        'category',
-        data.categories
-      );
-
-      fillSelect(
-        'priority',
-        data.priorities
-      );
-
-      const priority =
-        document.getElementById('priority');
-
-      if (
-        [...priority.options]
-          .some(x => x.value === 'NORMAL')
-      ) {
-
-        priority.value = 'NORMAL';
-
+        return;
       }
 
-    })
-
-    .withFailureHandler(function(error) {
-
-      showMessage(
-        'โหลด Settings ไม่สำเร็จ: ' +
-        error.message,
-        false
-      );
-
-    })
-
-    .getSettings();
-
-}
-
-function fillSelect(id, items) {
-
-  const select =
-    document.getElementById(id);
-
-  items.forEach(item => {
-
-    const option =
-      document.createElement('option');
-
-    option.value = item.code;
-    option.textContent = item.name;
-
-    select.appendChild(option);
-
-  });
-
-}
-
-/* =====================================================
-   SELECT IMAGE
-===================================================== */
-
-document
-  .getElementById('imageInput')
-  .addEventListener(
-    'change',
-    function(event) {
-
-      const files =
-        Array.from(event.target.files);
-
-      files.forEach(file => {
-
-        // รับเฉพาะรูป
-        if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > QA_CONFIG.maxImageBytes) { showMessage('Only JPEG / PNG / WebP, maximum 5 MiB per image.', false); return; }
-
-        selectedFiles.push({
-
-          id:
-            Date.now() +
-            '-' +
-            Math.random(),
-
-          file: file,
-
-          description: ''
-
-        });
-
-      });
-
-      renderPreview();
-
-      // ทำให้เลือกไฟล์เดิมซ้ำได้
-      event.target.value = '';
-
+      loadJob();
     }
   );
 
-/* =====================================================
-   PREVIEW
-===================================================== */
+  function showJobLoadError(message) {
+    const box=document.getElementById('loadingBox');
+    box.style.display='block';box.replaceChildren();
+    document.getElementById('mainContent').style.display='none';
+    const text=document.createElement('p');text.textContent=message;box.append(text);
+    const link=document.createElement('a');link.href=QA.pageUrl('history');
+    link.textContent='กลับไปค้นหาใบงาน';
+    box.append(link);
+  }
 
-function renderPreview() {
-
-  const grid =
-    document.getElementById('previewGrid');
-
-  grid.innerHTML = '';
-
-  selectedFiles.forEach(item => {
-
-    const reader =
-      new FileReader();
-
-    reader.onload = function(e) {
-
-      const div =
-        document.createElement('div');
-
-      div.className =
-        'preview-item';
-
-      const img =
-        document.createElement('img');
-
-      img.src = e.target.result;
-
-      const input =
-        document.createElement('input');
-
-      input.type = 'text';
-      input.placeholder =
-        'คำอธิบายรูป (ถ้ามี)';
-
-      input.value =
-        item.description;
-
-      input.addEventListener(
-        'input',
-        function() {
-
-          item.description =
-            input.value;
-
+  function loadJob() {
+    QA.run
+      .withSuccessHandler(function(result) {
+        if (!result?.success || !result.job) {
+          showJobLoadError(result?.message || 'Job not found.');return;
         }
+        if (String(result.job.jobId)!==JOB_ID) {
+          showJobLoadError('JOB_ID_MISMATCH: The returned job does not match this link.');return;
+        }
+        currentJob=result.job;
+        renderJob();
+      })
+      .withFailureHandler(function(error) {
+        if(String(error.message).includes('JOB_NOT_FOUND_OR_FORBIDDEN')) QA.forgetJob(JOB_ID);
+        showJobLoadError(error.message);
+      })
+      .getJob(JOB_ID);
+  }
+
+  function renderJob() {
+
+    document.getElementById(
+      'loadingBox'
+    ).style.display = 'none';
+
+    document.getElementById(
+      'mainContent'
+    ).style.display = 'block';
+
+    setText('jobIdDisplay', currentJob.jobId);
+    setText('issuerName', currentJob.issuerName);
+    setText('toDepartment', currentJob.toDepartment);
+    setText('serialNo', currentJob.serialNo || '-');
+    setText('createdDateTime', currentJob.createdDateTime);
+    setText('category', currentJob.category);
+    setText('priority', currentJob.priority);
+    setText('impact', currentJob.impact || '-');
+    setText('location', currentJob.location || '-');
+
+    setText(
+      'downtimeMin',
+      currentJob.downtimeMin !== null && currentJob.downtimeMin !== ''
+        ? currentJob.downtimeMin + ' นาที'
+        : '-'
+    );
+
+    setText(
+      'problemDetail',
+      currentJob.problemDetail
+    );
+
+    const status =
+      document.getElementById(
+        'statusDisplay'
       );
 
-      const button =
-        document.createElement('button');
+    QA.setStatusBadge(status, currentJob.status);
+    document.title = currentJob.jobId + ' | ' + QA.statusInfo(currentJob.status).label + ' | QA';
 
-      button.type = 'button';
-      button.className =
-        'remove-btn';
+    document.getElementById(
+      'assigneeName'
+    ).value =
+      currentJob.assigneeName || '';
 
-      button.textContent =
-        'ลบรูป';
+    document.getElementById(
+      'targetDate'
+    ).value =
+      currentJob.targetDate || '';
 
-      button.onclick = function() {
+    document.getElementById(
+      'initialAction'
+    ).value =
+      currentJob.initialAction || '';
 
-        selectedFiles =
-          selectedFiles.filter(
-            x => x.id !== item.id
-          );
+    document.getElementById(
+      'preventiveAction'
+    ).value =
+      currentJob.preventiveAction || '';
 
-        renderPreview();
+    renderImages(
+      'beforeImages',
+      currentJob.beforeImages
+    );
+renderCorrectiveHistory(
+      currentJob.correctiveLogs || []
+    );
 
-      };
+    renderImages('savedDraftImages', currentJob.afterImages || []);
+    updateStatusView();
+    if ((currentJob.correctiveLogs || []).length && ['IN_PROGRESS','REWORK'].includes(currentJob.status)) {
+      setCorrectiveLabels(true); updateEditableSectionTitle(true);
+    }
+    QA.applyPermissions();
 
-      div.appendChild(img);
-      div.appendChild(input);
-      div.appendChild(button);
+  }
 
-      grid.appendChild(div);
+  function updateStatusView() {
 
-    };
+    hide('acceptCard');
+    hide('correctiveCard');
+    hide('waitingCard');
+    hide('closedCard');
+    hide('qaCard');
+    hide('reworkCard');
+    hide('correctiveHistoryCard');
 
-    reader.readAsDataURL(item.file);
+    const status =
+      String(currentJob.status || '')
+        .trim()
+        .toUpperCase();
+
+    if (status === 'OPEN') {
+      show('acceptCard');
+    }
+
+    else if (status === 'IN_PROGRESS') {
+      show('correctiveCard');
+      enableCorrectiveForm();
+
+      if (currentJob.correctiveLogs && currentJob.correctiveLogs.length > 0) {
+        show('correctiveHistoryCard');
+      }
+
+      setCorrectiveLabels(false);
+      updateEditableSectionTitle(false);
+
+      const submitBtn = document.getElementById('submitQaBtn');
+      if (submitBtn) {
+        submitBtn.textContent = 'ส่งให้ QA ตรวจ';
+      }
+    }
+
+    else if (status === 'REWORK') {
+      show('reworkCard');
+
+      setText(
+        'reworkComment',
+        currentJob.qaComment || 'QA ส่งกลับให้แก้ไข'
+      );
+
+      show('correctiveHistoryCard');
+      show('correctiveCard');
+      enableCorrectiveForm();
+      setCorrectiveLabels(true);
+      updateEditableSectionTitle(true);
+
+      const submitBtn = document.getElementById('submitQaBtn');
+      if (submitBtn) {
+        submitBtn.textContent = 'ส่งให้ QA ตรวจอีกครั้ง';
+      }
+    }
+
+    else if (status === 'WAITING_QA') {
+      show('correctiveHistoryCard');
+
+      // รอบที่ส่งแล้วอยู่ใน Corrective_Log และแสดงแบบอ่านอย่างเดียวด้านบน
+      // จึงไม่ต้องแสดงฟอร์มแก้ไขซ้ำ
+      hide('correctiveCard');
+
+      show('qaCard');
+    }
+
+    else if (status === 'CLOSED') {
+      show('correctiveHistoryCard');
+
+      // ปิดงานแล้ว แสดงเฉพาะรอบที่ล็อกไว้
+      hide('correctiveCard');
+
+      show('closedCard');
+    }
+
+  }
+
+  function updateEditableSectionTitle(isRework) {
+
+    const title =
+      document.getElementById('editableSectionTitle');
+
+    if (!title) return;
+
+    const logs =
+      currentJob.correctiveLogs || [];
+
+    const nextSectionNo =
+      3 + logs.length;
+
+    const afterTitle =
+      document.getElementById('afterSectionTitle');
+
+    const roundNo = logs.length + 1;
+
+    if (isRework) {
+      title.textContent =
+        nextSectionNo +
+        '. การแก้ไขเพิ่มเติม / REWORK รอบที่ ' +
+        roundNo;
+
+      if (afterTitle) {
+        afterTitle.textContent =
+          'รูปภาพหลังแก้ไขเพิ่มเติม (AFTER ' +
+          roundNo +
+          ')';
+      }
+
+    } else {
+      title.textContent =
+        '3. การแก้ไขและป้องกัน';
+
+      if (afterTitle) {
+        afterTitle.textContent =
+          'รูปภาพหลังดำเนินการ (AFTER 1)';
+      }
+    }
+
+  }
+
+  function setCorrectiveLabels(isRework) {
+
+    const correctiveLabel =
+      document.getElementById('correctiveActionLabel');
+
+    const preventiveLabel =
+      document.getElementById('preventiveActionLabel');
+
+    if (correctiveLabel) {
+      correctiveLabel.innerHTML =
+        isRework
+          ? 'การแก้ไขเพิ่มเติมจาก QA / Rework Action <span class="required">*</span>'
+          : 'การแก้ไขเบื้องต้น / Corrective Action <span class="required">*</span>';
+    }
+
+    if (preventiveLabel) {
+      preventiveLabel.textContent =
+        isRework
+          ? 'การป้องกันเพิ่มเติม (ถ้ามี)'
+          : 'การป้องกันไม่ให้เกิดซ้ำ / Preventive Action';
+    }
+
+  }
+
+  function renderCorrectiveHistory(logs) {
+
+    const card =
+      document.getElementById('correctiveHistoryCard');
+
+    const container =
+      document.getElementById('correctiveHistoryList');
+
+    if (!card || !container) return;
+
+    container.innerHTML = '';
+
+    if (!logs || logs.length === 0) {
+      card.style.display = 'none';
+      return;
+    }
+
+    logs.forEach(log => {
+
+      const box = document.createElement('div');
+      box.className = 'history-card';
+
+      const round = document.createElement('div');
+      round.className = 'history-round';
+      const sectionNo =
+        2 + Number(log.roundNo || 0);
+
+      round.textContent =
+        sectionNo +
+        '. การแก้ไข' +
+        (
+          Number(log.roundNo) > 1
+            ? 'เพิ่มเติม'
+            : 'และป้องกัน'
+        ) +
+        ' — รอบที่ ' +
+        log.roundNo;
+
+      box.appendChild(round);
+
+      const locked =
+        document.createElement('div');
+
+      locked.style.fontSize = '13px';
+      locked.style.color = '#666';
+      locked.style.marginBottom = '12px';
+      locked.textContent =
+        '🔒 ส่งแล้ว — อ่านอย่างเดียว';
+
+      box.appendChild(locked);
+
+      addHistoryLine(
+        box,
+        'ผู้รับผิดชอบ',
+        log.assigneeName || '-'
+      );
+
+      addHistoryLine(
+        box,
+        'วันที่ส่ง QA',
+        log.dateTime || '-'
+      );
+
+      addHistoryLine(
+        box,
+        'การแก้ไข',
+        log.correctiveAction || '-'
+      );
+
+      addHistoryLine(
+        box,
+        'การป้องกัน',
+        log.preventiveAction || '-'
+      );
+
+      const imageLabel = document.createElement('div');
+      imageLabel.className = 'info-label';
+      imageLabel.style.marginTop = '12px';
+      imageLabel.textContent =
+        'รูป AFTER ' + log.roundNo;
+
+      box.appendChild(imageLabel);
+
+      const imageGrid = document.createElement('div');
+      imageGrid.className = 'image-grid';
+      imageGrid.style.marginTop = '8px';
+
+      const roundImages = log.afterImages || [];
+
+      if (roundImages.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'ไม่มีรูปภาพ';
+        imageGrid.appendChild(empty);
+      } else {
+        roundImages.forEach(image => {
+          const imageCard = document.createElement('div');
+          imageCard.className = 'image-card';
+
+          const img = document.createElement('img');
+          img.src = image.url;
+          img.onclick = function() {
+            window.open(image.url, '_blank', 'noopener,noreferrer');
+          };
+
+          const desc = document.createElement('div');
+          desc.className = 'image-description';
+          desc.textContent =
+            image.description || image.fileName;
+
+          imageCard.appendChild(img);
+          imageCard.appendChild(desc);
+          imageGrid.appendChild(imageCard);
+        });
+      }
+
+      box.appendChild(imageGrid);
+
+      if (log.result && log.result !== 'WAITING_QA') {
+
+        addHistoryLine(
+          box,
+          'ผู้ตรวจ QA',
+          log.qaInspector || '-'
+        );
+
+        addHistoryLine(
+          box,
+          'ความเห็น QA',
+          log.qaComment || '-'
+        );
+
+      }
+
+      const result = document.createElement('div');
+      result.className = 'history-result';
+
+      if (log.result === 'PASS') {
+        result.textContent = 'QA: ผ่าน';
+      } else if (log.result === 'REJECT') {
+        result.textContent = 'QA: ไม่ผ่าน';
+      } else {
+        result.textContent = 'รอ QA ตรวจ';
+      }
+
+      box.appendChild(result);
+      container.appendChild(box);
+
+    });
+
+  }
+
+  function addHistoryLine(parent, label, value) {
+
+    const wrapper = document.createElement('div');
+    wrapper.style.marginBottom = '10px';
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'info-label';
+    labelEl.textContent = label;
+
+    const valueEl = document.createElement('div');
+    valueEl.className = 'info-value';
+    valueEl.textContent = value || '-';
+
+    wrapper.appendChild(labelEl);
+    wrapper.appendChild(valueEl);
+    parent.appendChild(wrapper);
+
+  }
+
+  function disableCorrectiveForm() {
+
+    [
+      'assigneeName',
+      'targetDate',
+      'initialAction',
+      'preventiveAction',
+      'afterImageInput',
+      'saveBtn',
+      'submitQaBtn'
+    ].forEach(id => {
+
+      const el =
+        document.getElementById(id);
+
+      if (el) {
+        el.disabled = true;
+      }
+
+    });
+
+  }
+function enableCorrectiveForm() {
+
+  const ids = [
+    'assigneeName',
+    'targetDate',
+    'initialAction',
+    'preventiveAction',
+    'afterImageInput',
+    'saveBtn',
+    'submitQaBtn'
+  ];
+
+  ids.forEach(function(id) {
+
+    const el = document.getElementById(id);
+
+    if (el) {
+      el.disabled = false;
+    }
 
   });
 
 }
 
-/* =====================================================
-   FILE → BASE64
-===================================================== */
+  function acceptCurrentJob() {
 
-async function prepareUpload(item) {
-    return QA.prepareFile(item);
-  }
+    const btn =
+      document.getElementById(
+        'acceptBtn'
+      );
 
-  /* =====================================================
-   SUBMIT
-===================================================== */
+    btn.disabled = true;
+    btn.textContent = 'กำลังรับงาน...';
 
-document
-  .getElementById('jobForm')
-  .addEventListener(
-    'submit',
-    async function(event) {
+    QA.run
 
-      event.preventDefault();
+      .withSuccessHandler(function(result) {
 
-      const button =
-        document.getElementById(
-          'submitBtn'
-        );
+        btn.disabled = false;
+        btn.textContent =
+          'รับงาน / เริ่มดำเนินการ';
 
-      button.disabled = true;
+        if (!result.success) {
 
-      button.textContent =
-        selectedFiles.length > 0
-        ? 'กำลังบันทึกและอัปโหลดรูป...'
-        : 'กำลังบันทึก...';
+          showMessage(
+            result.message,
+            false
+          );
 
-      try {
-
-        const files = await Promise.all(
-          selectedFiles.map(
-            prepareUpload
-          )
-        );
-
-        const formData = {
-
-          issuerName:
-            document
-              .getElementById(
-                'issuerName'
-              )
-              .value.trim(),
-
-          toDepartment:
-            document
-              .getElementById(
-                'toDepartment'
-              )
-              .value,
-
-          serialNo:
-            document
-              .getElementById(
-                'serialNo'
-              )
-              .value.trim(),
-
-          category:
-            document
-              .getElementById(
-                'category'
-              )
-              .value,
-
-          priority:
-            document
-              .getElementById(
-                'priority'
-              )
-              .value,
-
-          impact:
-            document
-              .getElementById(
-                'impact'
-              )
-              .value.trim(),
-
-          location:
-            document
-              .getElementById(
-                'location'
-              )
-              .value.trim(),
-
-          downtimeMin:
-            document
-              .getElementById(
-                'downtimeMin'
-              )
-              .value,
-
-          problemDetail:
-            document
-              .getElementById(
-                'problemDetail'
-              )
-              .value.trim(),
-
-          files: files
-
-        };
-
-        QA.run
-
-          .withSuccessHandler(
-            function(result) {
-
-              button.disabled = false;
-              button.textContent =
-                'แจ้งปัญหา';
-
-              if (!result.success) {
-
-                showMessage(
-                  result.message,
-                  false
-                );
-
-                return;
-
-              }
-
-              showMessage(
-
-                'สร้างใบแจ้งปัญหาสำเร็จ' +
-
-                '<div class="job-number"><a href="job.html?job=' + encodeURIComponent(result.jobId) + '">' +
-                result.jobId +
-                '</a></div>' +
-
-                '<div>บันทึกรูปภาพ ' +
-                result.uploadedCount +
-                ' รูป</div>',
-
-                true
-
-              );
-
-              document
-                .getElementById(
-                  'jobForm'
-                )
-                .reset();
-
-              selectedFiles = [];
-
-              renderPreview();
-
-              const priority =
-                document.getElementById(
-                  'priority'
-                );
-
-              if (
-                [...priority.options]
-                .some(
-                  x =>
-                    x.value ===
-                    'NORMAL'
-                )
-              ) {
-
-                priority.value =
-                  'NORMAL';
-
-              }
-
-              window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-              });
-
-            }
-          )
-
-          .withFailureHandler(
-            function(error) {
-
-              button.disabled = false;
-
-              button.textContent =
-                'แจ้งปัญหา';
-
-              showMessage(
-                'เกิดข้อผิดพลาด: ' +
-                error.message,
-                false
-              );
-
-            }
-          )
-
-          .createJob(formData);
-
-      } catch (error) {
-
-        button.disabled = false;
-
-        button.textContent =
-          'แจ้งปัญหา';
+          return;
+        }
 
         showMessage(
-          'ไม่สามารถอ่านรูปภาพได้: ' +
+          'รับงานเรียบร้อยแล้ว',
+          true
+        );
+
+        loadJob();
+
+      })
+
+      .withFailureHandler(function(error) {
+
+        btn.disabled = false;
+
+        showMessage(
           error.message,
           false
         );
 
+      })
+
+      .acceptJob(JOB_ID);
+
+  }
+
+  document
+    .getElementById('afterImageInput')
+    .addEventListener(
+      'change',
+      function(event) {
+
+        const files =
+          Array.from(event.target.files);
+
+        files.forEach(file => {
+
+          if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > QA_CONFIG.maxImageBytes) { showMessage('Only JPEG / PNG / WebP, maximum 5 MiB per image.', false); return; }
+
+          afterFiles.push({
+
+            id:
+              Date.now() +
+              '-' +
+              Math.random(),
+
+            file: file,
+            description: ''
+
+          });
+
+        });
+
+        renderAfterPreview();
+
+        event.target.value = '';
+
       }
+    );
+
+  function renderAfterPreview() {
+
+    const grid =
+      document.getElementById(
+        'afterPreviewGrid'
+      );
+
+    grid.innerHTML = '';
+
+    afterFiles.forEach(item => {
+
+      const reader =
+        new FileReader();
+
+      reader.onload = function(e) {
+
+        const div =
+          document.createElement('div');
+
+        div.className =
+          'preview-item';
+
+        const img =
+          document.createElement('img');
+
+        img.src = e.target.result;
+
+        const input =
+          document.createElement('input');
+
+        input.type = 'text';
+        input.placeholder =
+          'คำอธิบายรูป (ถ้ามี)';
+
+        input.value =
+          item.description;
+
+        input.addEventListener(
+          'input',
+          function() {
+
+            item.description =
+              input.value;
+
+          }
+        );
+
+        const button =
+          document.createElement('button');
+
+        button.type = 'button';
+        button.className =
+          'remove-btn';
+
+        button.textContent =
+          'ลบรูป';
+
+        button.onclick = function() {
+
+          afterFiles =
+            afterFiles.filter(
+              x => x.id !== item.id
+            );
+
+          renderAfterPreview();
+
+        };
+
+        div.appendChild(img);
+        div.appendChild(input);
+        div.appendChild(button);
+
+        grid.appendChild(div);
+
+      };
+
+      reader.readAsDataURL(item.file);
+
+    });
+
+  }
+
+  async function prepareUpload(item) {
+    return QA.prepareFile(item);
+  }
+
+  async function saveWork(submitToQA) {
+
+    const assignee =
+      document.getElementById(
+        'assigneeName'
+      ).value.trim();
+
+    const initialAction =
+      document.getElementById(
+        'initialAction'
+      ).value.trim();
+
+    if (!assignee) {
+
+      showMessage(
+        'กรุณากรอกชื่อผู้รับผิดชอบ',
+        false
+      );
+
+      return;
+    }
+
+    if (
+      submitToQA &&
+      !initialAction
+    ) {
+
+      showMessage(
+        'กรุณากรอกการแก้ไขก่อนส่งให้ QA ตรวจ',
+        false
+      );
+
+      return;
+    }
+
+    const saveBtn =
+      document.getElementById('saveBtn');
+
+    const submitBtn =
+      document.getElementById(
+        'submitQaBtn'
+      );
+
+    saveBtn.disabled = true;
+    submitBtn.disabled = true;
+
+    try {
+
+      const files =
+        await Promise.all(
+          afterFiles.map(prepareUpload)
+        );
+
+      const data = {
+
+        jobId: JOB_ID,
+
+        assigneeName: assignee,
+
+        targetDate:
+          document.getElementById(
+            'targetDate'
+          ).value,
+
+        initialAction:
+          initialAction,
+
+        preventiveAction:
+          document.getElementById(
+            'preventiveAction'
+          ).value.trim(),
+
+        files: files,
+
+        submitToQA:
+          submitToQA
+
+      };
+
+      QA.run
+
+        .withSuccessHandler(function(result) {
+
+          saveBtn.disabled = false;
+          submitBtn.disabled = false;
+
+          if (!result.success) {
+
+            showMessage(
+              result.message,
+              false
+            );
+
+            return;
+          }
+
+          afterFiles = [];
+          renderAfterPreview();
+
+          if (submitToQA) {
+
+            showMessage(
+              'ส่งผลการแก้ไขให้ QA ตรวจเรียบร้อยแล้ว',
+              true
+            );
+
+          } else {
+
+            showMessage(
+              'บันทึกข้อมูลเรียบร้อยแล้ว',
+              true
+            );
+
+          }
+
+          loadJob();
+
+        })
+
+        .withFailureHandler(function(error) {
+
+          saveBtn.disabled = false;
+          submitBtn.disabled = false;
+
+          showMessage(
+            error.message,
+            false
+          );
+
+        })
+
+        .saveCorrectiveAction(data);
+
+    } catch (error) {
+
+      saveBtn.disabled = false;
+      submitBtn.disabled = false;
+
+      showMessage(
+        'ไม่สามารถอ่านไฟล์รูปภาพได้: ' +
+        error.message,
+        false
+      );
 
     }
-  );
+
+  }
+
+  function renderImages(elementId, images) {
+
+    const container =
+      document.getElementById(elementId);
+
+    container.innerHTML = '';
+
+    if (!images || images.length === 0) {
+
+      container.innerHTML =
+        '<div class="empty">ไม่มีรูปภาพ</div>';
+
+      return;
+    }
+
+    images.forEach(image => {
+
+      const card =
+        document.createElement('div');
+
+      card.className = 'image-card';
+
+      const img =
+        document.createElement('img');
+
+      img.src = image.url;
+
+      img.onclick = function() {
+        window.open(image.url, '_blank', 'noopener,noreferrer');
+      };
+
+      const desc =
+        document.createElement('div');
+
+      desc.className =
+        'image-description';
+
+      desc.textContent =
+        image.description ||
+        image.fileName;
+
+      card.appendChild(img);
+      card.appendChild(desc);
+
+      container.appendChild(card);
+
+    });
+
+  }
+
+  function setText(id, value) {
+
+    document.getElementById(id)
+      .textContent =
+        value === null || value === undefined || value === '' ? '-' : value;
+
+  }
+
+  function show(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.display = 'block';
+    }
+  }
+
+  function hide(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.display = 'none';
+    }
+  }
+
+  function showMessage(message, success) {
+
+    const box =
+      document.getElementById(
+        'messageBox'
+      );
+
+    box.className =
+      'message ' +
+      (
+        success
+          ? 'success'
+          : 'error'
+      );
+
+    box.textContent = message;
+    box.style.display = 'block';
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+
+  }
 
 /* =====================================================
-   MESSAGE
+   QA RESULT
 ===================================================== */
 
-function showMessage(
-  message,
-  success
-) {
+async function submitQaResult(approved) {
 
-  const box =
+  const inspector =
+    document
+      .getElementById(
+        'qaInspector'
+      )
+      .value
+      .trim();
+
+  const comment =
+    document
+      .getElementById(
+        'qaComment'
+      )
+      .value
+      .trim();
+
+  if (!inspector) {
+
+    showMessage(
+      'กรุณากรอกชื่อผู้ตรวจสอบ QA',
+      false
+    );
+
+    return;
+  }
+
+  // ถ้าไม่ผ่าน ต้องระบุเหตุผล
+  if (!approved && !comment) {
+
+    showMessage(
+      'กรุณาระบุเหตุผลที่ส่งกลับแก้ไข',
+      false
+    );
+
+    return;
+  }
+
+  const approveBtn =
     document.getElementById(
-      'messageBox'
+      'approveBtn'
     );
 
-  box.className =
-    'message ' +
-    (
-      success
-      ? 'success'
-      : 'error'
+  const rejectBtn =
+    document.getElementById(
+      'rejectBtn'
     );
 
-  box.innerHTML = success ? message : QA.escape(message);
+  approveBtn.disabled = true;
+  rejectBtn.disabled = true;
 
-  box.style.display =
-    'block';
+  try {
+
+    const data = {
+      jobId: JOB_ID,
+      inspector: inspector,
+      comment: comment,
+      approved: approved
+    };
+
+    QA.run
+
+      .withSuccessHandler(
+        function(result) {
+
+          approveBtn.disabled = false;
+          rejectBtn.disabled = false;
+
+          if (!result.success) {
+
+            showMessage(
+              result.message,
+              false
+            );
+
+            return;
+          }
+
+          if (approved) {
+
+            showMessage(
+              'QA อนุมัติและปิดงานเรียบร้อยแล้ว',
+              true
+            );
+
+          } else {
+
+            showMessage(
+              'ส่งงานกลับให้ฝ่ายรับผิดชอบแก้ไขเรียบร้อยแล้ว',
+              true
+            );
+
+          }
+
+          loadJob();
+
+        }
+      )
+
+      .withFailureHandler(
+        function(error) {
+
+          approveBtn.disabled = false;
+          rejectBtn.disabled = false;
+
+          showMessage(
+            error.message,
+            false
+          );
+
+        }
+      )
+
+      .saveQaVerification(data);
+
+  } catch (error) {
+
+    approveBtn.disabled = false;
+    rejectBtn.disabled = false;
+
+    showMessage(
+      'ไม่สามารถอ่านรูปภาพได้: ' +
+      error.message,
+      false
+    );
+
+  }
 
 }
 
+  function exportPdf() {
+
+    const btn =
+      document.getElementById('exportPdfBtn');
+
+    /*
+      เปิดแท็บว่างทันทีจากการคลิกของผู้ใช้
+      เพื่อไม่ให้ Browser/มือถือมองว่าเป็น popup ที่ไม่ได้เกิดจาก user gesture
+    */
+    pdfPreviewWindow =
+      window.open('', '_blank');
+
+    if (!pdfPreviewWindow) {
+      showMessage(
+        'Browser บล็อกหน้าต่าง PDF กรุณาอนุญาต Pop-ups สำหรับเว็บนี้',
+        false
+      );
+      return;
+    }
+
+    pdfPreviewWindow.document.write(
+      '<!doctype html>' +
+      '<html lang="th"><head><title>กำลังสร้าง PDF...</title>' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '</head><body style="font-family:Arial,sans-serif;padding:30px;">' +
+      '<h3>กำลังจัดหน้าเอกสาร PDF...</h3>' +
+      '<p>กรุณารอสักครู่</p>' +
+      '</body></html>'
+    );
+    pdfPreviewWindow.document.close();
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'กำลังสร้าง PDF...';
+    }
+
+    showMessage(
+      'กำลังสร้าง PDF กรุณารอสักครู่...',
+      true
+    );
+
+    QA.run
+
+      .withSuccessHandler(function(result) {
+
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Preview / Export PDF';
+        }
+
+        if (!result || !result.success) {
+
+          try {
+            if (
+              pdfPreviewWindow &&
+              !pdfPreviewWindow.closed
+            ) {
+              pdfPreviewWindow.close();
+            }
+          } catch (e) {}
+
+          showMessage(
+            result && result.message
+              ? result.message
+              : 'ไม่สามารถสร้าง PDF ได้',
+            false
+          );
+          return;
+        }
+
+        showMessage(
+          'สร้าง ' +
+          result.documentType +
+          ' PDF เรียบร้อย',
+          true
+        );
+
+        openPdfInBrowserViewer(result);
+
+      })
+
+      .withFailureHandler(function(error) {
+
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Preview / Export PDF';
+        }
+
+        try {
+          if (
+            pdfPreviewWindow &&
+            !pdfPreviewWindow.closed
+          ) {
+            pdfPreviewWindow.close();
+          }
+        } catch (e) {}
+
+        showMessage(
+          'สร้าง PDF ไม่สำเร็จ: ' +
+          error.message,
+          false
+        );
+
+      })
+
+      .exportJobPdf(JOB_ID);
+
+  }
+
+  function openPdfInBrowserViewer(result) {
+
+    if (
+      !pdfPreviewWindow ||
+      pdfPreviewWindow.closed
+    ) {
+      showMessage(
+        'ไม่สามารถเปิดหน้าต่าง PDF ได้ กรุณาอนุญาต Pop-ups แล้วลองใหม่',
+        false
+      );
+      return;
+    }
+
+    try {
+
+      const bytes =
+        base64ToUint8Array(result.base64 || '');
+
+      const blob =
+        new Blob(
+          [bytes],
+          { type: 'application/pdf' }
+        );
+
+      const pdfUrl =
+        URL.createObjectURL(blob);
+
+      /*
+        เปลี่ยนแท็บที่เปิดรอไว้ให้เป็นไฟล์ application/pdf โดยตรง
+        Chrome/Edge จะเปิด Browser PDF Viewer ของตัวเอง
+        ซึ่งมี Download / Print / Zoom เหมือนตัวอย่าง
+      */
+      pdfPreviewWindow.location.replace(pdfUrl);
+
+      // ไม่ revoke ทันที เพราะ Browser Viewer ยังต้องอ่าน Blob นี้
+      setTimeout(function() {
+        try {
+          URL.revokeObjectURL(pdfUrl);
+        } catch (e) {}
+      }, 10 * 60 * 1000);
+
+    } catch (error) {
+
+      try {
+        pdfPreviewWindow.close();
+      } catch (e) {}
+
+      showMessage(
+        'เปิด PDF ไม่สำเร็จ: ' +
+        error.message,
+        false
+      );
+
+    }
+
+  }
+
+  function base64ToUint8Array(base64) {
+
+    const binary =
+      atob(base64);
+
+    const bytes =
+      new Uint8Array(binary.length);
+
+    for (
+      let i = 0;
+      i < binary.length;
+      i++
+    ) {
+      bytes[i] =
+        binary.charCodeAt(i);
+    }
+
+    return bytes;
+
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    const preview=document.getElementById('afterPreviewGrid');
+    if(preview){const wrap=document.createElement('div');
+      const title=document.createElement('p');title.textContent='Saved draft images / รูป Draft ที่บันทึกแล้ว';
+      const grid=document.createElement('div');grid.id='savedDraftImages';grid.className='image-grid';
+      wrap.append(title,grid);preview.before(wrap);}
+    const exportButton=document.getElementById('exportPdfBtn');
+    if(exportButton){const printButton=document.createElement('button');printButton.type='button';
+      printButton.textContent='Print / Save PDF locally';printButton.style.marginLeft='8px';
+      printButton.onclick=()=>QA.printReport(JOB_ID);exportButton.after(printButton);}
+  });
 </script>
-
 </body>
-
 </html>

@@ -2,15 +2,17 @@
 <html lang="th">
 
 <head>
+  <!-- QA V33.1.0 navigation/status patch -->
+  <meta name="qa-page" content="create">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js"></script>
-  <script src="navigation.js"></script>
+  <script src="supabase-api.js?v=33.1.0"></script>
+  <script src="navigation.js?v=33.1.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
-  <base target="_top">
+  <base target="_self">
 
   <meta name="viewport"
         content="width=device-width, initial-scale=1">
@@ -803,55 +805,25 @@ document
 
               }
 
-              showMessage(
-
-                'สร้างใบแจ้งปัญหาสำเร็จ' +
-
-                '<div class="job-number"><a href="job.html?job=' + encodeURIComponent(result.jobId) + '">' +
-                result.jobId +
-                '</a></div>' +
-
-                '<div>บันทึกรูปภาพ ' +
-                result.uploadedCount +
-                ' รูป</div>',
-
-                true
-
-              );
-
-              document
-                .getElementById(
-                  'jobForm'
-                )
-                .reset();
-
-              selectedFiles = [];
-
-              renderPreview();
-
-              const priority =
-                document.getElementById(
-                  'priority'
-                );
-
-              if (
-                [...priority.options]
-                .some(
-                  x =>
-                    x.value ===
-                    'NORMAL'
-                )
-              ) {
-
-                priority.value =
-                  'NORMAL';
-
+              if (!result.jobId) {
+                button.disabled = true;
+                showMessage('Saved response has no Job ID. Check Job History before submitting again.', false);
+                return;
               }
 
-              window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-              });
+              const detailUrl = QA.jobUrl(result.jobId);
+              // Keep a real link as a fallback and prevent a second submission.
+              showMessage(
+                'บันทึกสำเร็จ กำลังเปิดรายละเอียดใบงาน...' +
+                '<div class="job-number"><a href="' + QA.escape(detailUrl) + '">' +
+                QA.escape(result.jobId) + '</a></div>', true
+              );
+              button.disabled = true;
+              button.textContent = 'กำลังเปิดใบงาน...';
+              selectedFiles = [];
+              document.getElementById('jobForm').reset();
+              // replace avoids going Back to a submitted, prefilled create form.
+              QA.openJob(result.jobId, {replace: true});
 
             }
           )

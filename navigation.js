@@ -1,15 +1,16 @@
+/* QA V33.1.0: canonical page links and per-user current-job navigation. */
 function buildAppNavHtml_(baseUrl, activePage) {
   const safeBase =
     String(baseUrl || '');
 
   const createUrl =
-    'index.html';
+    QA.pageUrl('create');
 
   const historyUrl =
-    'history.html';
+    QA.pageUrl('history');
 
   const dashboardUrl =
-    'dashboard.html';
+    QA.pageUrl('dashboard');
 
   const createClass =
     activePage === 'create'
@@ -26,10 +27,9 @@ function buildAppNavHtml_(baseUrl, activePage) {
       ? 'qa-side-link active'
       : 'qa-side-link';
 
-  const jobClass =
-    activePage === 'job'
-      ? 'qa-side-current active'
-      : 'qa-side-current';
+  const rememberedJob = QA.lastJobId();
+  const jobClass = 'qa-side-link qa-current-job-link' + (activePage === 'job' ? ' active' : '');
+  const jobUrl = rememberedJob ? QA.jobUrl(rememberedJob) : QA.pageUrl('history');
 
   return [
     '<style>',
@@ -303,17 +303,20 @@ function buildAppNavHtml_(baseUrl, activePage) {
           '<span>Dashboard</span>',
         '</a>',
 
-        '<div class="',
-          jobClass,
-        '">',
-          '<span class="qa-side-icon">▤</span>',
-          '<span>ใบงานปัจจุบัน</span>',
-        '</div>',
+        '<a id="qa-current-job-link" class="',jobClass,'" href="',htmlEscapeServer_(jobUrl),'"',
+          ' style="',rememberedJob?'':'display:none;','"',
+          activePage==='job'?' aria-current="page"':'','>',
+          '<span class="qa-side-icon">&#9636;</span>',
+          '<span><span>&#3651;&#3610;&#3591;&#3634;&#3609;&#3611;&#3633;&#3592;&#3592;&#3640;&#3610;&#3633;&#3609;</span>',
+          '<small id="qa-current-job-id" style="display:block;font-size:11px;margin-top:4px;overflow-wrap:anywhere;">',
+            htmlEscapeServer_(rememberedJob),'</small></span>',
+        '</a>',
 
       '</nav>',
 
       '<div class="qa-side-footer">',
         'QA Corrective Action System',
+        '<div id="qa-release-version" style="margin:6px 0;">V33.1.0</div>',
       '</div>',
 
     '</aside>',
@@ -362,9 +365,15 @@ window.toggleQaSidebar=function(){
 };
 window.closeQaSidebar=function(){document.body.classList.remove('qa-menu-open');document.querySelector('.qa-mobile-menu-btn')?.setAttribute('aria-expanded','false');document.getElementById('qaSidebar')?.classList.remove('open');document.getElementById('qaSidebarOverlay')?.classList.remove('show');};
 window.addEventListener('resize',()=>{if(innerWidth>800)closeQaSidebar();});
+window.refreshQaCurrentJobLink=function(jobId=QA.lastJobId()){
+ const link=document.getElementById('qa-current-job-link');if(!link)return;
+ const id=String(jobId||'');link.style.display=id?'flex':'none';
+ link.href=id?QA.jobUrl(id):QA.pageUrl('history');
+ const label=document.getElementById('qa-current-job-id');if(label)label.textContent=id;
+};
 window.mountQaNavigation=function(){
- const page=location.pathname.split('/').pop().replace('.html','');
- const active=page==='index'?'create':page;
+ if(document.getElementById('qaSidebar')) return;
+ const active=QA.pageName() || 'create';
  const content=document.createElement('div');content.className='qa-app-content';
  [...document.body.childNodes].forEach(n=>{if(n.nodeName!=='SCRIPT')content.append(n);});
  document.body.append(content);

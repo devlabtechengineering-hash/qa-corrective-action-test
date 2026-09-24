@@ -1,20 +1,106 @@
-/* QA V33 adapter. No Apps Script runtime is required.
+/* QA V33.1.0 navigation/status patch (2026-09-24).
+   QA V33 adapter. No Apps Script runtime is required.
    Original callback-shaped calls are preserved as QA.run; the implementation is Supabase.
    Mutation permissions and transitions are enforced in SQL, not by these UI checks. */
 (() => {
   'use strict';
   const cfg = window.QA_CONFIG || {};
-  const QA = window.QA = {profile: null, client: null};
+  const QA = window.QA = {profile: null, client: null, version: '33.1.0'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
   const ready = new Promise((resolve,reject) => {readyResolve=resolve;readyReject=reject;});
   ready.catch(() => {});
-  const isLogin = /(?:^|\/)login\.html$/.test(location.pathname);
+  // Resolve links from this script's folder, never from the domain root.
+  // This works both at / and at /repository-name/ on GitHub Pages.
+  const appBase = new URL('.', document.currentScript?.src || location.href);
+  const pageFiles = Object.freeze({create:'index.html', index:'index.html',
+    job:'job.html', history:'history.html', dashboard:'dashboard.html', login:'login.html'});
+  const pageName = input => {
+    try {
+      const u = new URL(input || location.href, appBase);
+      if(u.origin!==appBase.origin || !u.pathname.startsWith(appBase.pathname)) return '';
+      const tail=u.pathname.slice(appBase.pathname.length);
+      if(!tail || tail==='index.html' || tail==='index') return 'create';
+      return Object.keys(pageFiles).find(k => tail===pageFiles[k] || tail===k) || '';
+    } catch {return '';}
+  };
+  QA.pageName = pageName;
+  QA.pageUrl = (page, params={}) => {
+    if(!Object.prototype.hasOwnProperty.call(pageFiles,page)) throw new Error('Unknown application page');
+    const u=new URL(pageFiles[page],appBase);
+    for(const [key,value] of Object.entries(params)) {
+      if(value!==null && value!==undefined && String(value)!=='') u.searchParams.set(key,String(value));
+    }
+    return u.href;
+  };
+  const validJobId = value => {
+    const id=String(value ?? '').trim();
+    return id && id.length<=100 && !/[\u0000-\u001f\u007f]/.test(id) &&
+      !['undefined','null','[object Object]'].includes(id) ? id : '';
+  };
+  QA.jobIdFromUrl = (input=location.href) => {
+    try {
+      const params=new URL(input,appBase).searchParams;
+      // job is the canonical parameter; retain compatibility with old links.
+      return validJobId(params.get('job') || params.get('jobId') || params.get('job_id'));
+    } catch {return '';}
+  };
+  QA.jobUrl = jobId => {
+    const id=validJobId(jobId);
+    if(!id) throw new Error('Missing Job ID. Open a job from Job History.');
+    return QA.pageUrl('job',{job:id});
+  };
+  const currentJobKey = () => QA.profile?.user_id
+    ? `qa-current-job:${appBase.href}:${cfg.supabaseUrl}:${QA.profile.user_id}` : '';
+  QA.lastJobId = () => {
+    try {const key=currentJobKey();return key ? validJobId(sessionStorage.getItem(key)) : '';}
+    catch {return '';}
+  };
+  QA.rememberJob = jobId => {
+    const id=validJobId(jobId),key=currentJobKey();
+    if(!id || !key) return;
+    try {sessionStorage.setItem(key,id);} catch { /* Navigation still works without storage. */ }
+    window.refreshQaCurrentJobLink?.(id);
+  };
+  QA.forgetJob = jobId => {
+    if(jobId && QA.lastJobId()!==String(jobId)) return;
+    try {const key=currentJobKey();if(key) sessionStorage.removeItem(key);} catch {}
+    window.refreshQaCurrentJobLink?.('');
+  };
+  QA.openJob = (jobId, options={}) => {
+    const url=QA.jobUrl(jobId);
+    // Call only after a confirmed save or a successful read. This stores an ID,
+    // not a job snapshot; Supabase continues to enforce permissions on every read.
+    QA.rememberJob(jobId);
+    if(options.replace) location.replace(url);else location.assign(url);
+  };
+  const statusLabels=Object.freeze({
+    OPEN:'เปิดงาน / รอรับงาน',
+    IN_PROGRESS:'กำลังดำเนินการ',
+    WAITING_QA:'รอ QA ตรวจสอบ',
+    REWORK:'ส่งกลับแก้ไข',
+    CLOSED:'ปิดงานแล้ว'
+  });
+  QA.statusInfo = value => {
+    const code=String(value || '').trim().toUpperCase();
+    const known=Object.prototype.hasOwnProperty.call(statusLabels,code);
+    return {code:code || 'UNKNOWN',cssClass:known?code:'UNKNOWN',
+      label:known?statusLabels[code]:'ไม่ทราบสถานะ'};
+  };
+  QA.setStatusBadge = (el,value) => {
+    const info=QA.statusInfo(value);
+    el.className='status '+info.cssClass;
+    el.textContent=info.label+' ('+info.code+')';
+    el.dataset.status=info.code;
+    el.setAttribute('aria-label','สถานะ: '+el.textContent);
+    el.title=el.textContent;
+  };
+  const isLogin = pageName()==='login';
   const messageMap = {
-    AUTH_REQUIRED: '\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e39\u0e48\u0e23\u0e30\u0e1a\u0e1a',
-    PROFILE_NOT_ACTIVE: '\u0e1a\u0e31\u0e0d\u0e0a\u0e35\u0e19\u0e35\u0e49\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2a\u0e34\u0e17\u0e18\u0e34\u0e4c (qa_profiles)',
-    STALE_VERSION_REFRESH_REQUIRED: '\u0e21\u0e35\u0e1c\u0e39\u0e49\u0e41\u0e01\u0e49\u0e44\u0e02\u0e43\u0e1a\u0e07\u0e32\u0e19\u0e41\u0e25\u0e49\u0e27 \u0e01\u0e23\u0e38\u0e13\u0e32\u0e42\u0e2b\u0e25\u0e14\u0e43\u0e2b\u0e21\u0e48\u0e01\u0e48\u0e2d\u0e19\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01',
+    AUTH_REQUIRED: 'กรุณาเข้าสู่ระบบ',
+    PROFILE_NOT_ACTIVE: 'บัญชีนี้ยังไม่มีสิทธิ์ (qa_profiles)',
+    STALE_VERSION_REFRESH_REQUIRED: 'มีผู้แก้ไขใบงานแล้ว กรุณาโหลดใหม่ก่อนบันทึก',
     QA_ROLE_REQUIRED: 'Only QA or admin can create/verify jobs.',
     ASSIGNED_DEPARTMENT_ROLE_REQUIRED: 'Only the assigned department or admin can accept/edit this job.',
     JOB_NOT_FOUND_OR_FORBIDDEN: 'Job not found, or your account cannot access it.',
@@ -42,12 +128,26 @@
     document.querySelectorAll('form input,form select,form textarea,form button').forEach(el=>el.disabled=true);
     if(QA.client){const out=document.createElement('button');out.type='button';out.textContent='Sign out / Login';out.onclick=()=>QA.signOut();document.getElementById('qa-system-note').append(out);}
   }
-  function safeNext(raw) {
-    try { const u = new URL(raw || 'index.html',location.href);
-      if(u.origin!==location.origin || !/\/(index|history|dashboard|job)\.html$/.test(u.pathname)) return 'index.html';
-      return u.pathname.split('/').pop()+u.search;
-    } catch {return 'index.html';}
+  function safeNext(raw, defaultPage='create') {
+    const fallback=QA.pageUrl(defaultPage);
+    try {
+      if(!raw) return fallback;
+      const u=new URL(raw,appBase),page=pageName(u.href);
+      if(u.username || u.password || !['create','job','history','dashboard'].includes(page)) return fallback;
+      const id=QA.jobIdFromUrl(u.href);
+      if(page==='job' || (page==='create' && id)) return id?QA.jobUrl(id):QA.pageUrl('history');
+      return QA.pageUrl(page,Object.fromEntries(u.searchParams));
+    } catch {return fallback;}
   }
+  QA.safeNext=safeNext;
+  QA.loginUrl=() => {
+    const page=pageName(),id=QA.jobIdFromUrl();
+    let next;
+    if(id && ['create','job'].includes(page)) next=QA.jobUrl(id);
+    else if(['create','history','dashboard'].includes(page)) next=QA.pageUrl(page,Object.fromEntries(new URLSearchParams(location.search)));
+    else next=QA.pageUrl('history');
+    return QA.pageUrl('login',{next});
+  };
   function initClient() {
     if(location.protocol==='file:') throw new Error('Open via http://localhost, not file://. See 00_START_HERE_TH.txt.');
     if(!window.supabase?.createClient) throw new Error('Supabase library could not load. Check your Internet/CDN connection.');
@@ -69,10 +169,20 @@
     if(busy) {QA.notify('A request is still running. Resolve it before signing out.');return;}
     const {error}=await QA.client.auth.signOut({scope:'local'});
     if(error) {QA.notify(error.message);return;}
-    location.replace('login.html');
+    QA.forgetJob();
+    location.replace(QA.loginUrl());
   };
   async function init() {
     try {
+      // Old bookmarks that still point to index.html?job=... must open details,
+      // not display the new-notice form. Detect a wrongly uploaded HTML file too.
+      const actualPage=document.querySelector('meta[name="qa-page"]')?.content;
+      const routePage=pageName(),incomingId=QA.jobIdFromUrl();
+      if(actualPage && routePage && actualPage!==routePage) {
+        throw new Error('HTML_PAGE_MISMATCH: '+location.pathname+
+          ' contains the '+actualPage+' page. Upload the matching V33.1.0 HTML file to GitHub.');
+      }
+      if(routePage==='create' && incomingId) {location.replace(QA.jobUrl(incomingId));return;}
       initClient();
       const {data,error}=await QA.client.auth.getSession(); if(error) throw error;
       if(isLogin) {
@@ -86,22 +196,23 @@
             const password=document.getElementById('password').value;
             const {data:auth,error:err}=await QA.client.auth.signInWithPassword({email,password});
             if(err) throw err;
-            await readProfile(auth.user.id);
+            const profile=await readProfile(auth.user.id);
             document.getElementById('password').value='';
-            location.replace(safeNext(new URLSearchParams(location.search).get('next')));
+            location.replace(safeNext(new URLSearchParams(location.search).get('next'),
+              ['qa','admin'].includes(profile.role)?'create':'history'));
           } catch(err) {document.getElementById('loginError').textContent=errorOf(err).message;}
           finally {btn.disabled=false;}
         });
         readyResolve(); return;
       }
-      if(!data.session) {location.replace('login.html?next='+encodeURIComponent(location.pathname.split('/').pop()+location.search));return;}
+      if(!data.session) {location.replace(QA.loginUrl());return;}
       QA.profile=await readProfile(data.session.user.id);
       window.mountQaNavigation?.();
       document.body.classList.remove('qa-auth-loading');
       QA.applyPermissions();
       QA.client.auth.onAuthStateChange((event,session)=>{
         // Keep this callback synchronous: async Auth calls here can deadlock SDK locks.
-        if(event==='SIGNED_OUT') location.replace('login.html');
+        if(event==='SIGNED_OUT') {QA.forgetJob();location.replace(QA.loginUrl());}
         if(event==='SIGNED_IN' && session && session.user.id!==QA.profile.user_id) location.reload();
       });
       if(readPending()) showRecovery();
@@ -189,7 +300,8 @@
         dateTime:dateTime(l.submitted_at),assigneeName:l.assignee_name,correctiveAction:l.corrective_action,
         preventiveAction:l.preventive_action,result:l.result,qaComment:l.qa_comment,qaInspector:l.qa_inspector,
         lastUpdate:dateTime(l.updated_at),afterImages:images.filter(a=>a.fileType==='AFTER'&&a.roundNo===l.round_no)}));
-      if(options.track!==false){versions.set(job.jobId,job.version);QA.currentJob=job;}return {success:true,job};
+      if(options.track!==false){versions.set(job.jobId,job.version);QA.currentJob=job;QA.rememberJob(job.jobId);}
+      return {success:true,job};
     },
     async searchJobs(filters={}) {
       if(filters.dateFrom&&filters.dateTo&&filters.dateFrom>filters.dateTo) throw new Error('Start date must not be after end date.');
@@ -270,7 +382,7 @@
   QA.recoverPending=async()=>{
     if(busy)return;busy=true;
     try {const pending=readPending();if(!pending){QA.notify('No pending request');return;}
-      const result=await sendPending(pending);location.href='job.html?job='+encodeURIComponent(result.jobId);
+      const result=await sendPending(pending);QA.openJob(result.jobId,{replace:true});
     } catch(e){QA.notify(errorOf(e).message);if(readPending())showRecovery();}
     finally{busy=false;}
   };

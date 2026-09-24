@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!-- QA V33.1.0 navigation/status patch -->
+  <meta name="qa-page" content="history">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js"></script>
-  <script src="navigation.js"></script>
+  <script src="supabase-api.js?v=33.1.0"></script>
+  <script src="navigation.js?v=33.1.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
-  <base target="_top">
+  <base target="_self">
 
   <meta
     name="viewport"
@@ -163,7 +165,17 @@
       font-weight: 800;
     }
 
+    .status-summary{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px;}
+    .status-summary-title{width:100%;font-size:13px;color:#666;}
+    .job-top{flex-wrap:wrap;gap:10px;}
+    a.job-id{text-decoration:none;overflow-wrap:anywhere;}
+    a.job-id:hover{text-decoration:underline;}
+    a.job-id:focus-visible,.open-link:focus-visible{outline:3px solid #2563eb;outline-offset:4px;}
+    .status.UNKNOWN{background:#e5e7eb;color:#374151;}
     .status {
+      white-space:normal;
+      overflow-wrap:anywhere;
+      line-height:1.5;
       display: inline-block;
       padding: 6px 10px;
       border-radius: 14px;
@@ -412,6 +424,8 @@
       </div>
     </div>
 
+    <div id="statusSummary" class="status-summary" aria-live="polite"></div>
+
     <div
       id="resultArea"
       class="job-list">
@@ -427,8 +441,7 @@
 </div>
 
 <script>
-  const APP_URL =
-    new URL('job.html',location.href).href;
+  let searchSequence = 0;
 
   document.addEventListener(
     'DOMContentLoaded',
@@ -547,6 +560,8 @@
 
   function runSearch() {
 
+    const requestSequence = ++searchSequence;
+
     const area =
       document.getElementById(
         'resultArea'
@@ -561,12 +576,14 @@
       '<div class="loading">กำลังค้นหา...</div>';
 
     count.textContent = '';
+    document.getElementById('statusSummary').replaceChildren();
 
     QA.run
 
       .withSuccessHandler(
         function(result) {
 
+          if (requestSequence !== searchSequence) return;
           if (
             !result ||
             !result.success
@@ -589,6 +606,7 @@
 
       .withFailureHandler(
         function(error) {
+          if (requestSequence !== searchSequence) return;
           showError(
             error.message ||
             'ค้นหาไม่สำเร็จ'
@@ -619,6 +637,7 @@
       ' ใบงาน';
 
     area.innerHTML = '';
+    renderStatusSummary(jobs);
 
     if (!jobs.length) {
       area.innerHTML =
@@ -647,11 +666,15 @@
 
         const id =
           document.createElement(
-            'div'
+            'a'
           );
 
         id.className =
           'job-id';
+        id.href = QA.jobUrl(job.jobId);
+        id.target = '_self';
+        id.setAttribute('aria-label', 'Open job ' + job.jobId);
+        card.dataset.jobId = job.jobId;
 
         id.textContent =
           job.jobId || '-';
@@ -661,14 +684,7 @@
             'span'
           );
 
-        status.className =
-          'status ' +
-          (
-            job.status || ''
-          );
-
-        status.textContent =
-          job.status || '-';
+        QA.setStatusBadge(status, job.status);
 
         top.appendChild(id);
         top.appendChild(status);
@@ -752,15 +768,10 @@
         link.className =
           'open-link';
 
-        link.textContent =
-          'เปิดใบงาน';
-
-        link.href =
-          APP_URL +
-          '?job=' +
-          encodeURIComponent(
-            job.jobId
-          );
+        link.textContent = 'เปิดรายละเอียดใบงาน';
+        link.href = QA.jobUrl(job.jobId);
+        link.target = '_self';
+        link.setAttribute('aria-label', 'Open details ' + job.jobId);
 
         actions.appendChild(link);
         card.appendChild(actions);
@@ -770,6 +781,29 @@
       }
     );
   }
+
+  function renderStatusSummary(jobs) {
+    const box=document.getElementById('statusSummary');box.replaceChildren();
+    const title=document.createElement('div');title.className='status-summary-title';
+    title.textContent='สถานะเฉพาะรายการที่ค้นพบ';
+    box.append(title);
+    const counts={OPEN:0,IN_PROGRESS:0,WAITING_QA:0,REWORK:0,CLOSED:0};
+    for(const job of jobs){const code=QA.statusInfo(job.status).cssClass;counts[code]=(counts[code]||0)+1;}
+    for(const [code,count] of Object.entries(counts)) {
+      const badge=document.createElement('span');QA.setStatusBadge(badge,code);
+      badge.textContent += ' : '+count;
+      badge.setAttribute('aria-label',badge.textContent);badge.title=badge.textContent;
+      badge.dataset.count=String(count);box.append(badge);
+    }
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.querySelectorAll('#status option').forEach(option=>{
+      if(option.value){const info=QA.statusInfo(option.value);option.textContent=info.label+' ('+info.code+')';}
+    });
+  });
+  // A Back navigation can restore an old DOM from the browser's page cache.
+  // Reload the results in that case so the status reflects the current data.
+  window.addEventListener('pageshow',event=>{if(event.persisted) runSearch();});
 
   function addMeta(
     parent,
