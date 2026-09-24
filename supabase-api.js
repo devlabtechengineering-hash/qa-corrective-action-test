@@ -91,7 +91,7 @@
   QA.setStatusBadge = (el,value) => {
     const info=QA.statusInfo(value);
     el.className='status '+info.cssClass;
-    el.textContent=info.label+' ('+info.code+')';
+    el.textContent=info.label+' ('+info.code.replace(/_/g, ' ')+')';
     el.dataset.status=info.code;
     el.setAttribute('aria-label','สถานะ: '+el.textContent);
     el.title=el.textContent;

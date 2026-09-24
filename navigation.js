@@ -1,4 +1,4 @@
-/* QA V33.1.0: canonical page links and per-user current-job navigation. */
+/* QA V33.2.1 + company logo: canonical page links, current-job navigation, and LABTECH brand. */
 function buildAppNavHtml_(baseUrl, activePage) {
   const safeBase =
     String(baseUrl || '');
@@ -65,29 +65,32 @@ function buildAppNavHtml_(baseUrl, activePage) {
       '}',
 
       '.qa-side-brand{',
-        'padding:22px 18px 18px;',
+        'padding:14px 14px 16px;',
         'border-bottom:1px solid var(--qa-sidebar-border);',
       '}',
 
       '.qa-side-brand-row{',
-        'display:flex;',
-        'align-items:center;',
-        'gap:11px;',
+        'display:block;',
       '}',
 
       '.qa-side-logo{',
-        'width:38px;',
-        'height:38px;',
-        'border-radius:10px;',
+        'width:100%;',
+        'height:54px;',
+        'border-radius:9px;',
         'background:#fff;',
-        'color:#111827;',
         'display:flex;',
         'align-items:center;',
         'justify-content:center;',
-        'font-weight:800;',
-        'font-size:14px;',
-        'letter-spacing:.5px;',
-        'flex:0 0 auto;',
+        'overflow:hidden;',
+        'margin-bottom:10px;',
+      '}',
+
+      '.qa-side-logo img{',
+        'display:block;',
+        'width:100%;',
+        'height:100%;',
+        'object-fit:contain;',
+        'object-position:left center;',
       '}',
 
       '.qa-side-brand-title{',
@@ -258,7 +261,9 @@ function buildAppNavHtml_(baseUrl, activePage) {
 
       '<div class="qa-side-brand">',
         '<div class="qa-side-brand-row">',
-          '<div class="qa-side-logo">QA</div>',
+          '<div class="qa-side-logo">',
+            '<img src="labtech-logo.png" alt="LABTECH Engineering Company Ltd.">',
+          '</div>',
           '<div>',
             '<div class="qa-side-brand-title">',
               'Corrective Action',

@@ -8,7 +8,7 @@
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-api.js?v=33.1.0"></script>
-  <script src="navigation.js?v=33.1.0"></script>
+  <script src="navigation.js?v=33.2.1-logo1"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -347,10 +347,10 @@
             OPEN
           </option>
           <option value="IN_PROGRESS">
-            IN_PROGRESS
+            IN PROGRESS
           </option>
           <option value="WAITING_QA">
-            WAITING_QA
+            WAITING QA
           </option>
           <option value="REWORK">
             REWORK
@@ -798,7 +798,7 @@
   }
   document.addEventListener('DOMContentLoaded',()=>{
     document.querySelectorAll('#status option').forEach(option=>{
-      if(option.value){const info=QA.statusInfo(option.value);option.textContent=info.label+' ('+info.code+')';}
+      if(option.value){const info=QA.statusInfo(option.value);option.textContent=info.label+' ('+info.code.replace(/_/g, ' ')+')';}
     });
   });
   // A Back navigation can restore an old DOM from the browser's page cache.
