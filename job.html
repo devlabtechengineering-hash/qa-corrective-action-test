@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA V33.1.0 navigation/status patch -->
+  <!-- QA V33.1.0 navigation/status patch + PDF hotfix V33.1.1 -->
+  <meta name="qa-pdf-version" content="33.1.1">
   <meta name="qa-page" content="job">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
@@ -348,7 +349,7 @@
       }
     }
   </style>
-  <script src="report.js"></script>
+  <script src="report.js?v=33.1.1"></script>
 </head>
 
 <body class="qa-auth-loading">
@@ -1961,10 +1962,9 @@ async function submitQaResult(approved) {
       const title=document.createElement('p');title.textContent='Saved draft images / รูป Draft ที่บันทึกแล้ว';
       const grid=document.createElement('div');grid.id='savedDraftImages';grid.className='image-grid';
       wrap.append(title,grid);preview.before(wrap);}
+    // Keep the original Export PDF button only.
     const exportButton=document.getElementById('exportPdfBtn');
-    if(exportButton){const printButton=document.createElement('button');printButton.type='button';
-      printButton.textContent='Print / Save PDF locally';printButton.style.marginLeft='8px';
-      printButton.onclick=()=>QA.printReport(JOB_ID);exportButton.after(printButton);}
+    if(exportButton) exportButton.title='PDF V33.1.1';
   });
 </script>
 </body>
