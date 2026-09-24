@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA V33.1.0 navigation/status patch + PDF hotfix V33.1.1 -->
+  <!-- QA job page V33.2.0: workflow tracker. Retains navigation V33.1.0 and PDF V33.1.1. -->
+  <meta name="qa-job-version" content="33.2.0">
   <meta name="qa-pdf-version" content="33.1.1">
   <meta name="qa-page" content="job">
   <meta charset="UTF-8">
@@ -349,6 +350,133 @@
       }
     }
   </style>
+
+  <!-- Job progress tracker V33.2.0: presentation only; SQL remains authoritative. -->
+  <style id="qa-progress-style">
+    #jobProgressCard {
+      --qpt-accent: #b45309;
+      --qpt-soft: #fffbeb;
+      --qpt-ring: rgba(180, 83, 9, .24);
+      --qpt-done: #15803d;
+      --qpt-muted: #64748b;
+      border: 1px solid #e2e8f0;
+      border-top: 4px solid var(--qpt-accent);
+      padding: 24px;
+      overflow-wrap: anywhere;
+    }
+    #jobProgressCard[data-status="IN_PROGRESS"] {
+      --qpt-accent: #1d4ed8; --qpt-soft: #eff6ff; --qpt-ring: rgba(29,78,216,.2);
+    }
+    #jobProgressCard[data-status="WAITING_QA"] {
+      --qpt-accent: #6d28d9; --qpt-soft: #f5f3ff; --qpt-ring: rgba(109,40,217,.2);
+    }
+    #jobProgressCard[data-status="REWORK"] {
+      --qpt-accent: #b91c1c; --qpt-soft: #fef2f2; --qpt-ring: rgba(185,28,28,.2);
+    }
+    #jobProgressCard[data-status="CLOSED"] {
+      --qpt-accent: #15803d; --qpt-soft: #f0fdf4; --qpt-ring: rgba(21,128,61,.2);
+    }
+    #jobProgressCard[data-status="UNKNOWN"] {
+      --qpt-accent: #475569; --qpt-soft: #f8fafc; --qpt-ring: rgba(71,85,105,.2);
+    }
+    #acceptCard, #correctiveCard, #qaCard, #correctiveHistoryCard {scroll-margin-top:72px;}
+    #jobProgressCard [hidden] { display: none !important; }
+    .qpt-topline {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+    .qpt-kicker {margin:0;color:#64748b;font-size:12px;font-weight:700;letter-spacing:.08em;}
+    .qpt-version {font-size:11px;letter-spacing:0;background:#f1f5f9;padding:4px 8px;border-radius:6px;margin-left:8px;color:#475569;}
+    .qpt-mini {font-size:12px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:5px 11px;}
+    #jobProgressHeading {font-size:22px;line-height:1.5;margin:10px 0 4px;color:#0f172a;}
+    .qpt-overview {margin:0;color:var(--qpt-accent);font-size:16px;font-weight:700;line-height:1.6;}
+    .qpt-steps {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));list-style:none;margin:28px 0 22px;padding:0;}
+    .qpt-step {position:relative;min-width:0;text-align:center;padding:0 7px;}
+    .qpt-connector {
+      position:absolute;left:calc(50% + 26px);right:calc(-50% + 26px);top:22px;height:4px;
+      border-radius:4px;background:#e2e8f0;overflow:hidden;pointer-events:none;
+    }
+    .qpt-connector[data-link="done"] {background:var(--qpt-done);}
+    .qpt-connector[data-link="current"] {background:var(--qpt-accent);}
+    .qpt-connector[data-link="current"]::after {
+      content:"";position:absolute;inset:0;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.85),transparent);
+      transform:translateX(-100%);animation:qpt-flow 2.6s linear infinite;
+    }
+    .qpt-node {
+      position:relative;display:flex;align-items:center;justify-content:center;z-index:1;
+      width:48px;height:48px;margin:0 auto 13px;border-radius:50%;
+      background:#f8fafc;border:2px solid #cbd5e1;color:#64748b;
+    }
+    .qpt-node svg {width:22px;height:22px;display:block;}
+    .qpt-step[data-state="done"] .qpt-node {background:#f0fdf4;border-color:var(--qpt-done);color:var(--qpt-done);}
+    .qpt-step[data-state="current"] .qpt-node {
+      background:var(--qpt-accent);border-color:var(--qpt-accent);color:white;
+    }
+    .qpt-step[data-state="current"] .qpt-node::after {
+      content:"";position:absolute;inset:-7px;border:2px solid var(--qpt-accent);
+      border-radius:50%;opacity:.2;animation:qpt-pulse 2.6s ease-out infinite;
+    }
+    .qpt-step[aria-current="step"][data-state="done"] .qpt-node {box-shadow:0 0 0 6px #dcfce7;}
+    .qpt-step-title {font-size:15px;font-weight:700;line-height:1.5;color:#475569;}
+    .qpt-step[data-state="current"] .qpt-step-title {color:var(--qpt-accent);}
+    .qpt-step[data-state="done"] .qpt-step-title {color:#166534;}
+    .qpt-step-meta {font-size:12px;color:#64748b;margin-top:5px;line-height:1.55;}
+    .qpt-state-label {display:inline-block;margin-top:6px;padding:2px 8px;border-radius:10px;font-size:11px;line-height:1.6;background:#f1f5f9;color:#475569;}
+    .qpt-step[data-state="current"] .qpt-state-label {background:var(--qpt-soft);color:var(--qpt-accent);font-weight:700;}
+    .qpt-step[data-state="done"] .qpt-state-label {background:#f0fdf4;color:#166534;}
+    .qpt-next {background:var(--qpt-soft);border:1px solid var(--qpt-ring);border-radius:12px;padding:16px 18px;}
+    .qpt-next-label {font-size:12px;font-weight:700;color:var(--qpt-accent);margin:0 0 5px;}
+    .qpt-next-title {font-size:17px;line-height:1.5;margin:0;color:#0f172a;font-weight:700;}
+    .qpt-next-detail {margin:6px 0 0;font-size:14px;line-height:1.7;color:#334155;white-space:pre-wrap;}
+    .qpt-next-actions {margin-top:12px;}
+    #jobProgressAction {background:var(--qpt-accent);color:white;font-size:14px;min-height:42px;padding:9px 16px;}
+    #jobProgressAction:focus-visible, #jobProgressMotion:focus-visible {outline:3px solid #0f172a;outline-offset:3px;}
+    .qpt-return {padding:12px 14px;border-left:4px solid #b91c1c;border-radius:0 8px 8px 0;background:#fff7ed;margin-top:14px;color:#7c2d12;}
+    .qpt-return strong {display:block;font-size:13px;}
+    .qpt-return p {margin:4px 0 0;font-size:13px;line-height:1.6;white-space:pre-wrap;max-height:160px;overflow:auto;}
+    .qpt-facts {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0 14px;}
+    .qpt-facts > div {min-width:0;border-right:1px solid #e2e8f0;padding-right:10px;}
+    .qpt-facts > div:last-child {border-right:0;}
+    .qpt-facts dt {font-size:12px;color:#64748b;margin:0 0 5px;}
+    .qpt-facts dd {font-size:14px;color:#0f172a;font-weight:700;margin:0;line-height:1.6;}
+    .qpt-foot {border-top:1px solid #e2e8f0;padding-top:12px;display:flex;gap:12px;align-items:center;justify-content:space-between;}
+    .qpt-foot p {margin:0;color:#64748b;font-size:12px;line-height:1.7;}
+    #jobProgressMotion {flex:none;padding:7px 10px;background:white;color:#475569;border:1px solid #cbd5e1;border-radius:7px;font-size:12px;min-height:34px;}
+    .qpt-sr {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
+    #jobProgressCard[data-motion="paused"] .qpt-node::after,
+    #jobProgressCard[data-motion="paused"] .qpt-connector::after {animation:none !important;}
+    #jobProgressCard[data-motion="paused"] .qpt-connector::after {display:none;}
+    @keyframes qpt-pulse {0%{transform:scale(.88);opacity:.45;}75%,100%{transform:scale(1.22);opacity:0;}}
+    @keyframes qpt-flow {from{transform:translateX(-100%);}to{transform:translateX(100%);}}
+    @media (max-width:700px) {
+      #jobProgressCard {padding:18px;}
+      #jobProgressHeading {font-size:20px;}
+      .qpt-steps {grid-template-columns:1fr;margin:22px 0 16px;}
+      .qpt-step {display:grid;grid-template-columns:48px minmax(0,1fr);column-gap:16px;min-height:96px;text-align:left;padding:0 0 22px;}
+      .qpt-step:last-child {padding-bottom:0;min-height:74px;}
+      .qpt-node {grid-row:1 / 4;margin:0;}
+      .qpt-step-copy {min-width:0;padding-top:1px;}
+      .qpt-connector {left:22px;right:auto;top:52px;bottom:-20px;width:4px;height:auto;border-radius:4px;}
+      .qpt-connector[data-link="current"]::after {background:linear-gradient(180deg,transparent,rgba(255,255,255,.85),transparent);animation-name:qpt-flow-vertical;}
+      .qpt-step-meta {margin-top:1px;}
+      .qpt-state-label {margin-top:3px;}
+      .qpt-facts {grid-template-columns:1fr;gap:10px;}
+      .qpt-facts > div {border-right:0;padding:0;}
+      .qpt-facts dt {display:inline;margin-right:7px;}
+      .qpt-facts dd {display:inline;}
+      .qpt-foot {align-items:flex-start;}
+      #jobProgressAction {width:100%;}
+    }
+    @keyframes qpt-flow-vertical {from{transform:translateY(-100%);}to{transform:translateY(100%);}}
+    @media (prefers-reduced-motion:reduce) {
+      #jobProgressCard .qpt-node::after, #jobProgressCard .qpt-connector::after {animation:none !important;}
+      #jobProgressCard .qpt-connector::after {display:none;}
+    }
+    @media print {
+      #jobProgressCard {box-shadow:none;break-inside:avoid;border:1px solid #cbd5e1;}
+      #jobProgressAction, #jobProgressMotion {display:none !important;}
+      #jobProgressCard .qpt-node::after, #jobProgressCard .qpt-connector::after {animation:none !important;display:none;}
+    }
+  </style>
+
   <script src="report.js?v=33.1.1"></script>
 </head>
 
@@ -394,6 +522,44 @@
 
       </div>
     </div>
+
+
+    <!-- JOB PROGRESS V33.2.0: not a form, not a status-changing control. -->
+    <section id="jobProgressCard" class="card" aria-labelledby="jobProgressHeading"
+             aria-describedby="jobProgressFootnote" data-status="UNKNOWN" data-motion="running">
+      <div class="qpt-topline">
+        <p class="qpt-kicker">WORKFLOW <span class="qpt-version">V33.2.0</span></p>
+        <span id="jobProgressStage" class="qpt-mini"></span>
+      </div>
+      <h2 id="jobProgressHeading">ติดตามสถานะใบงาน</h2>
+      <p id="jobProgressOverview" class="qpt-overview"></p>
+      <p id="jobProgressAnnouncement" class="qpt-sr" role="status" aria-live="polite" aria-atomic="true"></p>
+      <ol id="jobProgressSteps" class="qpt-steps" aria-label="ขั้นตอนของใบงาน"></ol>
+
+      <div class="qpt-next">
+        <p class="qpt-next-label">ขั้นตอนถัดไป</p>
+        <p id="jobProgressNextTitle" class="qpt-next-title"></p>
+        <p id="jobProgressNextDetail" class="qpt-next-detail"></p>
+        <div id="jobProgressActionWrap" class="qpt-next-actions" hidden>
+          <button id="jobProgressAction" type="button" hidden></button>
+        </div>
+      </div>
+      <div id="jobProgressReturn" class="qpt-return" hidden>
+        <strong id="jobProgressReturnTitle">QA ส่งกลับแก้ไข</strong>
+        <p id="jobProgressReturnText"></p>
+      </div>
+      <dl class="qpt-facts">
+        <div><dt>ผู้ดำเนินการต่อ</dt><dd id="jobProgressOwner"></dd></div>
+        <div><dt>รอบการแก้ไข</dt><dd id="jobProgressRound"></dd></div>
+        <div><dt>ข้อมูลใบงานอัปเดตเมื่อ</dt><dd id="jobProgressUpdated"></dd></div>
+      </dl>
+      <div class="qpt-foot">
+        <p id="jobProgressFootnote">แสดงสถานะที่โหลดจากใบงาน ไม่ใช่เปอร์เซ็นต์ความสำเร็จ<br>
+          หากอีกคนเปลี่ยนสถานะ ให้โหลดหน้าใหม่หลังจัดการข้อมูลที่ยังไม่ได้บันทึก</p>
+        <button id="jobProgressMotion" type="button" aria-pressed="false">หยุดเอฟเฟกต์</button>
+      </div>
+    </section>
+
 
     <!-- QA INFORMATION -->
     <div class="card">
@@ -853,8 +1019,205 @@ renderCorrectiveHistory(
       setCorrectiveLabels(true); updateEditableSectionTitle(true);
     }
     QA.applyPermissions();
+    renderJobProgress();
 
   }
+
+
+  /* Job progress V33.2.0.
+     Uses the confirmed job snapshot only. No timers, network requests, new status
+     values, database writes, or LINE calls are made by this presentation layer.
+     REWORK returns to the correction step; it is not a milestone toward closure.
+  */
+  let jobProgressMotionPaused = false;
+
+  function jobProgressModel(job, profile) {
+    const j = job && typeof job === 'object' ? job : {};
+    const p = profile && typeof profile === 'object' ? profile : {};
+    const rawStatus = String(j.status || '').trim().toUpperCase();
+    const stages = {OPEN:0, IN_PROGRESS:1, WAITING_QA:2, REWORK:1, CLOSED:3};
+    const known = Object.prototype.hasOwnProperty.call(stages, rawStatus);
+    const status = known ? rawStatus : 'UNKNOWN';
+    const stage = known ? stages[status] : -1;
+    const department = String(j.toDepartment || '').trim();
+    const destination = department ? 'แผนก ' + department : 'แผนกผู้รับแจ้ง';
+    const canWork = p.role === 'admin' || (
+      p.role === 'department' && department !== '' && p.department === department
+    );
+    const canVerify = ['qa', 'admin'].includes(p.role);
+    const logs = (Array.isArray(j.correctiveLogs) ? j.correctiveLogs : []).filter(
+      log => log && typeof log === 'object'
+    );
+    const roundOf = log => {
+      const n = Number(log.roundNo);
+      return Number.isSafeInteger(n) && n > 0 ? n : 0;
+    };
+    const sorted = logs.slice().sort((a,b) => roundOf(a) - roundOf(b));
+    const last = sorted.length ? sorted[sorted.length - 1] : null;
+    const maxRound = sorted.reduce((n,log) => Math.max(n,roundOf(log)), 0);
+    const afterReject = Boolean(status === 'REWORK' || (
+      status === 'IN_PROGRESS' && last &&
+      String(last.result || '').toUpperCase() === 'REJECT'
+    ));
+    const activeRound = ['IN_PROGRESS','REWORK'].includes(status)
+      ? (maxRound < Number.MAX_SAFE_INTEGER ? maxRound + 1 : null)
+      : (['WAITING_QA','CLOSED'].includes(status) ? (maxRound || null) : null);
+    const roundLabel = status === 'OPEN' ? 'ยังไม่เริ่ม'
+      : activeRound ? 'รอบที่ ' + activeRound : 'ไม่พบเลขรอบในข้อมูล';
+    const roundText = activeRound ? 'รอบที่ ' + activeRound : 'รอบปัจจุบัน';
+    let overview = 'ไม่พบสถานะที่รองรับ';
+    let owner = 'ยังระบุไม่ได้';
+    let nextTitle = 'ตรวจสอบสถานะใบงาน';
+    let nextDetail = 'โหลดใบงานใหม่ หากยังไม่พบสถานะ ให้ผู้ดูแลตรวจสอบข้อมูลก่อนดำเนินการ';
+    let target = '', focus = '', actionLabel = '';
+    let stageText = stage >= 0 ? 'ขั้นที่ ' + (stage + 1) + ' จาก 4' : 'ไม่ทราบขั้นตอน';
+    const titles = ['แจ้งปัญหา', 'ดำเนินการแก้ไข', 'QA ตรวจสอบ', 'ปิดงาน'];
+    const meta = ['บันทึกใบแจ้งแล้ว', 'รับงานและแก้ไข', 'ตรวจผลการแก้ไข', 'รอ QA ยืนยันผล'];
+    if (status === 'OPEN') {
+      overview = 'แจ้งปัญหาแล้ว · รอ ' + destination + ' รับงาน';
+      owner = destination;
+      nextTitle = destination + ' เป็นผู้ดำเนินการต่อ';
+      nextDetail = canWork
+        ? 'คุณรับงานนี้ได้ กดปุ่มด้านล่างเพื่อไปยังส่วนรับงาน แล้วกด “รับงาน / เริ่มดำเนินการ”'
+        : 'ใบแจ้งถูกบันทึกแล้ว ผู้ใช้แผนกที่รับแจ้งต้องเปิดใบงานนี้และกด “รับงาน / เริ่มดำเนินการ”';
+      meta[0] = 'รอแผนกรับงาน';
+      if (canWork) {target='acceptCard';focus='acceptBtn';actionLabel='ไปที่ส่วนรับงาน';}
+    } else if (status === 'IN_PROGRESS' || status === 'REWORK') {
+      owner = destination;
+      overview = status === 'REWORK'
+        ? 'QA ส่งกลับแก้ไข · รอ ' + destination + ' แก้ไขเพิ่มเติม'
+        : afterReject ? 'กำลังแก้ไขเพิ่มเติม · ' + roundText
+        : 'รับงานแล้ว · กำลังดำเนินการแก้ไข';
+      nextTitle = destination + ' บันทึกผลการแก้ไขและส่ง QA';
+      nextDetail = canWork
+        ? 'กรอกผู้รับผิดชอบ ผลการแก้ไข และหลักฐาน AFTER จากนั้น “บันทึกไว้ก่อน” หรือ “ส่งให้ QA ตรวจ” เมื่องานพร้อม'
+        : 'รอฝ่ายผู้รับผิดชอบบันทึกผลการแก้ไขและส่งให้ QA ตรวจ การบันทึกไว้ก่อนยังไม่ถือว่าส่งตรวจ';
+      titles[1] = afterReject ? 'แก้ไขเพิ่มเติม' : 'ดำเนินการแก้ไข';
+      meta[1] = roundText + (afterReject ? ' · หลัง QA ตีกลับ' : ' · อยู่ระหว่างแก้ไข');
+      meta[2] = afterReject ? 'รอส่งตรวจอีกครั้ง' : 'รอส่งให้ QA ตรวจ';
+      if (canWork) {target='correctiveCard';focus='assigneeName';actionLabel='ไปกรอกการแก้ไข';}
+    } else if (status === 'WAITING_QA') {
+      overview = 'ส่งผลการแก้ไขแล้ว · รอ QA ตรวจ ' + roundText;
+      owner = 'QA';
+      nextTitle = 'QA ตรวจผลการแก้ไข ' + roundText;
+      nextDetail = canVerify
+        ? 'ตรวจรายละเอียดและรูป AFTER แล้วเลือก “ผ่าน / ปิดงาน” หรือ “ไม่ผ่าน / ส่งกลับแก้ไข” พร้อมเหตุผล'
+        : 'ส่งผลเรียบร้อยแล้ว รอ QA ตรวจและแจ้งผล ข้อมูลของรอบที่ส่งตรวจถูกล็อกไว้แล้ว';
+      meta[1] = 'ส่งผลการแก้ไขแล้ว';
+      meta[2] = 'รอตรวจ ' + roundText;
+      if (canVerify) {target='qaCard';focus='qaComment';actionLabel='ไปตรวจผลการแก้ไข';}
+    } else if (status === 'CLOSED') {
+      overview = 'QA ตรวจผ่าน · ปิดใบงานเรียบร้อยแล้ว';
+      owner = 'ไม่มีขั้นตอนค้าง';
+      nextTitle = 'งานเสร็จสิ้น';
+      nextDetail = 'ดูรายละเอียดและรอบการแก้ไขย้อนหลังได้ หรือใช้ปุ่ม Export PDF ที่หัวใบงานเพื่อออกรายงาน';
+      stageText = 'ครบ 4 ขั้นตอน';
+      meta[1] = 'ส่งผลการแก้ไขแล้ว';meta[2] = 'ตรวจผ่านแล้ว';meta[3] = 'ปิดงานแล้ว';
+      if (logs.length) {target='correctiveHistoryCard';actionLabel='ดูรอบการแก้ไขทั้งหมด';}
+    } else {
+      meta.fill('ยังระบุไม่ได้');
+    }
+    const steps = titles.map((title,i) => {
+      const state = stage < 0 ? 'unknown' : status === 'CLOSED' || i < stage
+        ? 'done' : i === stage ? 'current' : 'pending';
+      const stateLabel = state === 'done' ? 'ผ่านขั้นนี้แล้ว' : state === 'current'
+        ? status === 'REWORK' ? 'กลับมาแก้ไข' : 'ขั้นปัจจุบัน'
+        : state === 'pending' ? 'ยังไม่ถึงขั้นนี้' : 'ไม่ทราบ';
+      return {title, meta:meta[i], state, stateLabel, current:i === stage,
+        link: i === 0 ? 'none' : stage < 0 || i > stage ? 'pending'
+          : i === stage && status !== 'CLOSED' ? 'current' : 'done'};
+    });
+    const rejectComment = afterReject
+      ? String((status === 'REWORK' ? j.qaComment : '') || (last && last.qaComment) || j.qaComment || '').trim()
+      : '';
+    return {status, stage, stageText, overview, owner, nextTitle, nextDetail, target, focus, actionLabel,
+      steps, roundLabel:known ? roundLabel : 'ยังระบุไม่ได้',
+      updated:String(j.lastUpdate || '').trim() || 'ไม่มีเวลาอัปเดตในข้อมูล',
+      showReturn:afterReject,
+      returnTitle:status === 'REWORK' ? 'QA ส่งกลับแก้ไข — กลับมาที่ขั้นดำเนินการ' : 'กำลังแก้ไขต่อจากรอบที่ QA ส่งกลับ',
+      returnText:rejectComment || 'ดูเหตุผลจาก QA ในประวัติรอบการแก้ไขด้านล่าง',
+      animate:known && status !== 'CLOSED'};
+  }
+
+  function jobProgressIcon(index, done, rework) {
+    // Fixed SVG paths only. No user text is interpolated into markup.
+    const paths = [
+      '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 10h6M9 14h6"/>',
+      '<path d="M14.5 6.5a5 5 0 0 0-6 6L3 18l3 3 5.5-5.5a5 5 0 0 0 6-6l-3 3-3-3 3-3z"/>',
+      '<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5M7 10l2 2 4-4"/>',
+      '<path d="M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6l-9-4zM8 12l3 3 5-6"/>'
+    ];
+    const shape = done ? '<path d="m5 12 4 4L19 6"/>'
+      : rework ? '<path d="M5 8a8 8 0 1 1-1 8M5 3v6h6"/>' : paths[index];
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + shape + '</svg>';
+  }
+
+  function renderJobProgress() {
+    const card = document.getElementById('jobProgressCard');
+    if (!card || !currentJob) return;
+    const model = jobProgressModel(currentJob, QA.profile);
+    card.dataset.status = model.status;
+    card.dataset.motion = jobProgressMotionPaused ? 'paused' : 'running';
+    const put = (id,value) => {document.getElementById(id).textContent=value;};
+    put('jobProgressStage',model.stageText);
+    put('jobProgressOverview',model.overview);
+    put('jobProgressNextTitle',model.nextTitle);
+    put('jobProgressNextDetail',model.nextDetail);
+    put('jobProgressOwner',model.owner);
+    put('jobProgressRound',model.roundLabel);
+    put('jobProgressUpdated',model.updated);
+    put('jobProgressReturnTitle',model.returnTitle);
+    put('jobProgressReturnText',model.returnText);
+    document.getElementById('jobProgressReturn').hidden = !model.showReturn;
+    const announcement = currentJob.jobId + ': ' + model.overview + '. ' + model.stageText;
+    const live = document.getElementById('jobProgressAnnouncement');
+    if (live.textContent !== announcement) live.textContent = announcement;
+    const list = document.getElementById('jobProgressSteps');
+    list.replaceChildren();
+    model.steps.forEach((step,index) => {
+      const li=document.createElement('li');li.className='qpt-step';li.dataset.state=step.state;
+      li.dataset.step=String(index+1);
+      if(step.current) li.setAttribute('aria-current','step');
+      const connector=document.createElement('span');connector.className='qpt-connector';
+      connector.dataset.link=model.steps[index+1]?.link || 'none';connector.setAttribute('aria-hidden','true');
+      if(index===model.steps.length-1) connector.hidden=true;
+      const node=document.createElement('span');node.className='qpt-node';node.setAttribute('aria-hidden','true');
+      node.innerHTML=jobProgressIcon(index,step.state==='done',model.status==='REWORK'&&index===1);
+      const copy=document.createElement('div');copy.className='qpt-step-copy';
+      const title=document.createElement('div');title.className='qpt-step-title';title.textContent=step.title;
+      const meta=document.createElement('div');meta.className='qpt-step-meta';meta.textContent=step.meta;
+      const state=document.createElement('div');state.className='qpt-state-label';state.textContent=step.stateLabel;
+      copy.append(title,meta,state);li.append(connector,node,copy);list.append(li);
+    });
+    const button=document.getElementById('jobProgressAction');
+    const wrap=document.getElementById('jobProgressActionWrap');
+    const target=model.target && document.getElementById(model.target);
+    // Match the existing permission-controlled section. The button only scrolls;
+    // it does not accept, submit, approve, or modify any field/status.
+    const available=Boolean(target && getComputedStyle(target).display!=='none');
+    button.hidden=!available;wrap.hidden=!available;
+    button.textContent=model.actionLabel;
+    button.onclick=available ? () => {
+      const el=document.getElementById(model.target);
+      if(!el || getComputedStyle(el).display==='none') return;
+      const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      el.scrollIntoView({behavior:reduced ? 'auto':'smooth',block:'start'});
+      const focus=model.focus && document.getElementById(model.focus);
+      if(focus && !focus.disabled) focus.focus({preventScroll:true});
+    } : null;
+    const motion=document.getElementById('jobProgressMotion');
+    motion.hidden=!model.animate;
+    motion.setAttribute('aria-pressed',String(jobProgressMotionPaused));
+    motion.textContent=jobProgressMotionPaused ? 'เปิดเอฟเฟกต์' : 'หยุดเอฟเฟกต์';
+    motion.title='หยุดหรือเปิดภาพเคลื่อนไหวเท่านั้น ไม่เปลี่ยนสถานะใบงาน';
+    motion.onclick=() => {
+      jobProgressMotionPaused=!jobProgressMotionPaused;
+      card.dataset.motion=jobProgressMotionPaused?'paused':'running';
+      motion.setAttribute('aria-pressed',String(jobProgressMotionPaused));
+      motion.textContent=jobProgressMotionPaused?'เปิดเอฟเฟกต์':'หยุดเอฟเฟกต์';
+    };
+  }
+
 
   function updateStatusView() {
 
