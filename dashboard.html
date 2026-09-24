@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="referrer" content="no-referrer">
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-api.js"></script>
+  <script src="navigation.js"></script>
+  <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
+
+  <base target="_top">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Tahoma, sans-serif;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+
+    .dashboard-page {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 26px 22px 55px;
+    }
+
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .dashboard-title {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+      color: #111827;
+    }
+
+    .dashboard-subtitle {
+      margin: 6px 0 0;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .capture-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 9px 13px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      border-radius: 9px;
+      text-decoration: none;
+      color: #374151;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .capture-link:hover {
+      background: #f9fafb;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, .05);
+    }
+
+    .filter-panel {
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 180px minmax(180px, 260px) auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      color: #4b5563;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .field select,
+    .field input {
+      width: 100%;
+      height: 42px;
+      padding: 0 11px;
+      border: 1px solid #d1d5db;
+      border-radius: 9px;
+      background: #fff;
+      color: #111827;
+      font-size: 14px;
+    }
+
+    .refresh-btn {
+      height: 42px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 9px;
+      background: #111827;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .summary-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 13px;
+      padding: 16px;
+      min-height: 100px;
+    }
+
+    .summary-label {
+      color: #6b7280;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 9px;
+    }
+
+    .summary-value {
+      font-size: 29px;
+      line-height: 1;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .summary-note {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .chart-panel {
+      padding: 18px 18px 14px;
+      margin-bottom: 18px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 18px;
+      color: #111827;
+    }
+
+    .period-label {
+      color: #6b7280;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #4b5563;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      flex: 0 0 auto;
+    }
+
+    .c-open { background: #f59e0b; }
+    .c-progress { background: #3b82f6; }
+    .c-waiting { background: #8b5cf6; }
+    .c-rework { background: #ef4444; }
+    .c-closed { background: #22c55e; }
+
+    .chart-scroll {
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .chart-frame {
+      min-width: 720px;
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 10px;
+    }
+
+    .y-axis {
+      height: 310px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: #9ca3af;
+      font-size: 11px;
+      text-align: right;
+      padding-bottom: 35px;
+    }
+
+    .bars-zone {
+      position: relative;
+      min-height: 310px;
+      border-left: 1px solid #d1d5db;
+      border-bottom: 1px solid #d1d5db;
+      background:
+        repeating-linear-gradient(
+          to top,
+          #eef0f2 0,
+          #eef0f2 1px,
+          transparent 1px,
+          transparent 61px
+        );
+      padding: 0 8px;
+    }
+
+    .bars {
+      height: 274px;
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      min-width: max-content;
+    }
+
+    .bar-item {
+      width: 72px;
+      height: 274px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: stretch;
+      position: relative;
+      flex: 0 0 72px;
+    }
+
+    .bar-stack {
+      width: 46px;
+      margin: 0 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column-reverse;
+      justify-content: flex-start;
+      border-radius: 7px 7px 0 0;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(17,24,39,.06);
+    }
+
+    .bar-segment {
+      width: 100%;
+      min-height: 0;
+      position: relative;
+    }
+
+    .bar-segment[data-count]:hover::after {
+      content: attr(data-label);
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 6px);
+      transform: translateX(-50%);
+      white-space: nowrap;
+      background: #111827;
+      color: #fff;
+      padding: 5px 7px;
+      border-radius: 6px;
+      font-size: 11px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .bar-total {
+      position: absolute;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #374151;
+      transform: translateY(-18px);
+    }
+
+    .bar-label {
+      height: 36px;
+      padding-top: 7px;
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.15;
+      color: #4b5563;
+      word-break: break-word;
+      overflow: hidden;
+    }
+
+    .empty-bar {
+      width: 46px;
+      height: 2px;
+      margin: 0 auto;
+      background: #d1d5db;
+      border-radius: 2px 2px 0 0;
+    }
+
+    .table-panel {
+      padding: 18px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 11px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #374151;
+      font-weight: 800;
+      position: sticky;
+      top: 0;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    tbody tr:hover {
+      background: #fafafa;
+    }
+
+    .total-row {
+      font-weight: 800;
+      background: #f8fafc;
+    }
+
+    .loading,
+    .error {
+      padding: 42px 16px;
+      text-align: center;
+      color: #6b7280;
+    }
+
+    .error {
+      color: #b91c1c;
+    }
+
+    .capture-mode .qa-sidebar,
+    .capture-mode .qa-mobile-menu-btn,
+    .capture-mode .qa-sidebar-overlay,
+    .capture-mode .filter-panel,
+    .capture-mode .table-panel,
+    .capture-mode .capture-link {
+      display: none !important;
+    }
+
+    .capture-mode .qa-app-content {
+      margin-left: 0 !important;
+    }
+
+    .capture-mode .dashboard-page {
+      max-width: 1120px;
+      padding: 24px;
+      background: #fff;
+    }
+
+    .capture-mode .dashboard-header {
+      margin-bottom: 14px;
+    }
+
+    .capture-mode .chart-panel {
+      box-shadow: none;
+      border-color: #d1d5db;
+    }
+
+    @media(max-width:900px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .filter-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .refresh-btn {
+        width: 100%;
+      }
+    }
+
+    @media(max-width:620px) {
+      .dashboard-page {
+        padding: 72px 12px 40px;
+      }
+
+      .dashboard-title {
+        font-size: 23px;
+      }
+
+      .filter-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .summary-value {
+        font-size: 25px;
+      }
+
+      .chart-panel,
+      .table-panel,
+      .filter-panel {
+        padding: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body class="qa-auth-loading">
+
+<div class="dashboard-page">
+
+  <div class="dashboard-header">
+    <div>
+      <h1 class="dashboard-title">
+        Dashboard
+      </h1>
+      <p class="dashboard-subtitle">
+        สรุปใบแจ้งปัญหาแยกตามแผนกและสถานะ
+      </p>
+    </div>
+
+  </div>
+
+  <div class="panel filter-panel">
+    <div class="filter-grid">
+
+      <div class="field">
+        <label for="period">
+          รูปแบบการดูข้อมูล
+        </label>
+
+        <select
+          id="period"
+          onchange="changePeriod()">
+          <option value="year">
+            รายปี
+          </option>
+          <option value="month">
+            รายเดือน
+          </option>
+          <option value="day">
+            รายวัน
+          </option>
+        </select>
+      </div>
+
+      <div
+        id="dayField"
+        class="field"
+        style="display:none;">
+        <label for="dayInput">
+          วันที่
+        </label>
+        <input
+          id="dayInput"
+          type="date">
+      </div>
+
+      <div
+        id="monthField"
+        class="field"
+        style="display:none;">
+        <label for="monthInput">
+          เดือน
+        </label>
+        <input
+          id="monthInput"
+          type="month">
+      </div>
+
+      <div
+        id="yearField"
+        class="field">
+        <label for="yearInput">
+          ปี
+        </label>
+        <input
+          id="yearInput"
+          type="number"
+          min="2020"
+          max="2100"
+          step="1">
+      </div>
+
+      <div>
+        <button
+          type="button"
+          class="refresh-btn"
+          onclick="loadDashboard()">
+          แสดงข้อมูล
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="summary-grid">
+
+    <div class="summary-card">
+      <div class="summary-label">
+        งานทั้งหมด
+      </div>
+      <div
+        id="totalJobs"
+        class="summary-value">
+        -
+      </div>
+      <div
+        id="totalPeriod"
+        class="summary-note">
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-label">
+        กำลังดำเนินการ
+      </div>
+      <div
+        id="progressJobs"
+        class="summary-value">
+        -
+      </div>
+      <div class="summary-note">
+        IN_PROGRESS
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-label">
+        รอ QA ตรวจ
+      </div>
+      <div
+        id="waitingJobs"
+        class="summary-value">
+        -
+      </div>
+      <div class="summary-note">
+        WAITING_QA
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-label">
+        ส่งกลับแก้ไข
+      </div>
+      <div
+        id="reworkJobs"
+        class="summary-value">
+        -
+      </div>
+      <div class="summary-note">
+        REWORK
+      </div>
+    </div>
+
+  </div>
+
+  <div class="panel chart-panel">
+
+    <div class="section-head">
+      <h2 class="section-title">
+        จำนวนใบงานตามแผนก
+      </h2>
+
+      <div
+        id="periodLabel"
+        class="period-label">
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="legend-dot c-open"></span>
+        OPEN
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot c-progress"></span>
+        IN_PROGRESS
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot c-waiting"></span>
+        WAITING_QA
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot c-rework"></span>
+        REWORK
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot c-closed"></span>
+        CLOSED
+      </div>
+    </div>
+
+    <div id="chartArea">
+      <div class="loading">
+        กำลังโหลด Dashboard...
+      </div>
+    </div>
+
+  </div>
+
+  <div class="panel table-panel">
+
+    <div class="section-head">
+      <h2 class="section-title">
+        ตารางสรุป
+      </h2>
+
+      <div
+        id="generatedAt"
+        class="period-label">
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>แผนก</th>
+            <th>OPEN</th>
+            <th>IN_PROGRESS</th>
+            <th>WAITING_QA</th>
+            <th>REWORK</th>
+            <th>CLOSED</th>
+            <th>รวม</th>
+          </tr>
+        </thead>
+
+        <tbody id="summaryBody">
+          <tr>
+            <td
+              colspan="7"
+              class="loading">
+              กำลังโหลด...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const APP_URL =
+    new URL('dashboard.html',location.href).href;
+
+  const STATUS_META = {
+    OPEN: {
+      className: 'c-open'
+    },
+    IN_PROGRESS: {
+      className: 'c-progress'
+    },
+    WAITING_QA: {
+      className: 'c-waiting'
+    },
+    REWORK: {
+      className: 'c-rework'
+    },
+    CLOSED: {
+      className: 'c-closed'
+    }
+  };
+
+  document.addEventListener(
+    'DOMContentLoaded',
+    function() {
+      initializeDashboard();
+    }
+  );
+
+  function initializeDashboard() {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const now =
+      new Date();
+
+    const period =
+      params.get('period') ||
+      'day';
+
+    document.getElementById(
+      'period'
+    ).value =
+      ['day','month','year']
+        .indexOf(period) >= 0
+          ? period
+          : 'day';
+
+    document.getElementById(
+      'dayInput'
+    ).value =
+      params.get('date') ||
+      QA.bangkokDateKey(now);
+
+    document.getElementById(
+      'monthInput'
+    ).value =
+      params.get('month') ||
+      QA.bangkokDateKey(now).slice(0,7);
+
+    document.getElementById(
+      'yearInput'
+    ).value =
+      params.get('year') ||
+      Number(QA.bangkokDateKey(now).slice(0,4));
+
+    if (
+      params.get('capture') === '1'
+    ) {
+      document.body
+        .classList
+        .add('capture-mode');
+    }
+
+    changePeriod(false);
+    loadDashboard();
+  }
+
+  function localDateValue(date) {
+    const y =
+      date.getFullYear();
+
+    const m =
+      String(
+        date.getMonth() + 1
+      ).padStart(2, '0');
+
+    const d =
+      String(
+        date.getDate()
+      ).padStart(2, '0');
+
+    return y + '-' + m + '-' + d;
+  }
+
+  function localMonthValue(date) {
+    return (
+      date.getFullYear() +
+      '-' +
+      String(
+        date.getMonth() + 1
+      ).padStart(2, '0')
+    );
+  }
+
+  function changePeriod(reload) {
+    const period =
+      document.getElementById(
+        'period'
+      ).value;
+
+    document.getElementById(
+      'dayField'
+    ).style.display =
+      period === 'day'
+        ? 'block'
+        : 'none';
+
+    document.getElementById(
+      'monthField'
+    ).style.display =
+      period === 'month'
+        ? 'block'
+        : 'none';
+
+    document.getElementById(
+      'yearField'
+    ).style.display =
+      period === 'year'
+        ? 'block'
+        : 'none';
+
+    if (reload) {
+      loadDashboard();
+    }
+  }
+
+  function getDashboardFilters() {
+    const period =
+      document.getElementById(
+        'period'
+      ).value;
+
+    const filters = {
+      period: period
+    };
+
+    if (period === 'day') {
+      filters.date =
+        document.getElementById(
+          'dayInput'
+        ).value;
+    }
+
+    if (period === 'month') {
+      filters.month =
+        document.getElementById(
+          'monthInput'
+        ).value;
+    }
+
+    if (period === 'year') {
+      filters.year =
+        document.getElementById(
+          'yearInput'
+        ).value;
+    }
+
+    return filters;
+  }
+
+  function updateUrl(filters) {
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    params.set(
+      'page',
+      'dashboard'
+    );
+
+    params.set(
+      'period',
+      filters.period
+    );
+
+    params.delete('date');
+    params.delete('month');
+    params.delete('year');
+
+    if (filters.period === 'day') {
+      params.set(
+        'date',
+        filters.date
+      );
+    }
+
+    if (filters.period === 'month') {
+      params.set(
+        'month',
+        filters.month
+      );
+    }
+
+    if (filters.period === 'year') {
+      params.set(
+        'year',
+        filters.year
+      );
+    }
+
+    const normalUrl =
+      APP_URL +
+      '?' +
+      params.toString();
+
+    if (
+      !document.body
+        .classList
+        .contains('capture-mode')
+    ) {
+      window.history.replaceState(
+        {},
+        '',
+        normalUrl
+      );
+    }
+  }
+
+  function loadDashboard() {
+    const filters =
+      getDashboardFilters();
+
+    document.getElementById(
+      'chartArea'
+    ).innerHTML =
+      '<div class="loading">กำลังโหลด Dashboard...</div>';
+
+    document.getElementById(
+      'summaryBody'
+    ).innerHTML =
+      '<tr><td colspan="7" class="loading">กำลังโหลด...</td></tr>';
+
+    QA.run
+
+      .withSuccessHandler(
+        function(result) {
+          if (
+            !result ||
+            !result.success
+          ) {
+            showDashboardError(
+              result &&
+              result.message
+                ? result.message
+                : 'โหลด Dashboard ไม่สำเร็จ'
+            );
+            return;
+          }
+
+          renderDashboard(
+            result
+          );
+          updateUrl(filters);
+        }
+      )
+
+      .withFailureHandler(
+        function(error) {
+          showDashboardError(
+            error &&
+            error.message
+              ? error.message
+              : 'โหลด Dashboard ไม่สำเร็จ'
+          );
+        }
+      )
+
+      .getDashboardData(
+        filters
+      );
+  }
+
+  function renderDashboard(data) {
+    document.getElementById(
+      'totalJobs'
+    ).textContent =
+      numberText(
+        data.totals.TOTAL
+      );
+
+    document.getElementById(
+      'progressJobs'
+    ).textContent =
+      numberText(
+        data.totals.IN_PROGRESS
+      );
+
+    document.getElementById(
+      'waitingJobs'
+    ).textContent =
+      numberText(
+        data.totals.WAITING_QA
+      );
+
+    document.getElementById(
+      'reworkJobs'
+    ).textContent =
+      numberText(
+        data.totals.REWORK
+      );
+
+    document.getElementById(
+      'totalPeriod'
+    ).textContent =
+      data.selectedLabel || '';
+
+    document.getElementById(
+      'periodLabel'
+    ).textContent =
+      data.selectedLabel || '';
+
+    document.getElementById(
+      'generatedAt'
+    ).textContent =
+      'อัปเดต ' +
+      (
+        data.generatedAt || ''
+      );
+
+    renderStackedChart(
+      data.departments || []
+    );
+
+    renderSummaryTable(
+      data.departments || [],
+      data.totals || {}
+    );
+  }
+
+  function renderStackedChart(departments) {
+    const area =
+      document.getElementById(
+        'chartArea'
+      );
+
+    area.innerHTML = '';
+
+    const maxTotal =
+      Math.max(
+        1,
+        ...departments.map(
+          function(dep) {
+            return Number(
+              dep.total || 0
+            );
+          }
+        )
+      );
+
+    const tickMax =
+      niceMax(maxTotal);
+
+    const frame =
+      document.createElement(
+        'div'
+      );
+
+    frame.className =
+      'chart-scroll';
+
+    const inner =
+      document.createElement(
+        'div'
+      );
+
+    inner.className =
+      'chart-frame';
+
+    const yAxis =
+      document.createElement(
+        'div'
+      );
+
+    yAxis.className =
+      'y-axis';
+
+    [
+      tickMax,
+      Math.round(tickMax * .75),
+      Math.round(tickMax * .50),
+      Math.round(tickMax * .25),
+      0
+    ].forEach(
+      function(value) {
+        const tick =
+          document.createElement(
+            'div'
+          );
+
+        tick.textContent =
+          value;
+
+        yAxis.appendChild(
+          tick
+        );
+      }
+    );
+
+    const barsZone =
+      document.createElement(
+        'div'
+      );
+
+    barsZone.className =
+      'bars-zone';
+
+    const bars =
+      document.createElement(
+        'div'
+      );
+
+    bars.className =
+      'bars';
+
+    departments.forEach(
+      function(dep) {
+
+        const item =
+          document.createElement(
+            'div'
+          );
+
+        item.className =
+          'bar-item';
+
+        const total =
+          Number(
+            dep.total || 0
+          );
+
+        if (total > 0) {
+          const totalLabel =
+            document.createElement(
+              'div'
+            );
+
+          totalLabel.className =
+            'bar-total';
+
+          totalLabel.textContent =
+            total;
+
+          const totalHeight =
+            Math.max(
+              5,
+              Math.round(
+                260 *
+                (
+                  total /
+                  tickMax
+                )
+              )
+            );
+
+          totalLabel.style.bottom =
+            (
+              totalHeight + 35
+            ) +
+            'px';
+
+          item.appendChild(
+            totalLabel
+          );
+
+          const stack =
+            document.createElement(
+              'div'
+            );
+
+          stack.className =
+            'bar-stack';
+
+          stack.style.height =
+            totalHeight +
+            'px';
+
+          [
+            'OPEN',
+            'IN_PROGRESS',
+            'WAITING_QA',
+            'REWORK',
+            'CLOSED'
+          ].forEach(
+            function(status) {
+              const count =
+                Number(
+                  dep.statusCounts[
+                    status
+                  ] || 0
+                );
+
+              if (!count) {
+                return;
+              }
+
+              const segment =
+                document.createElement(
+                  'div'
+                );
+
+              segment.className =
+                'bar-segment ' +
+                STATUS_META[
+                  status
+                ].className;
+
+              segment.style.height =
+                (
+                  count /
+                  total *
+                  100
+                ) +
+                '%';
+
+              segment.setAttribute(
+                'data-count',
+                String(count)
+              );
+
+              segment.setAttribute(
+                'data-label',
+                status +
+                ': ' +
+                count
+              );
+
+              stack.appendChild(
+                segment
+              );
+            }
+          );
+
+          item.appendChild(
+            stack
+          );
+
+        } else {
+          const empty =
+            document.createElement(
+              'div'
+            );
+
+          empty.className =
+            'empty-bar';
+
+          item.appendChild(
+            empty
+          );
+        }
+
+        const label =
+          document.createElement(
+            'div'
+          );
+
+        label.className =
+          'bar-label';
+
+        label.title =
+          dep.displayName ||
+          dep.code ||
+          '-';
+
+        label.textContent =
+          dep.code ||
+          dep.displayName ||
+          '-';
+
+        item.appendChild(
+          label
+        );
+
+        bars.appendChild(
+          item
+        );
+      }
+    );
+
+    barsZone.appendChild(
+      bars
+    );
+
+    inner.appendChild(
+      yAxis
+    );
+
+    inner.appendChild(
+      barsZone
+    );
+
+    frame.appendChild(
+      inner
+    );
+
+    area.appendChild(
+      frame
+    );
+  }
+
+  function niceMax(value) {
+    const n =
+      Math.max(
+        1,
+        Number(value || 0)
+      );
+
+    if (n <= 5) {
+      return 5;
+    }
+
+    if (n <= 10) {
+      return 10;
+    }
+
+    if (n <= 20) {
+      return 20;
+    }
+
+    const step =
+      Math.pow(
+        10,
+        Math.floor(
+          Math.log10(n)
+        ) - 1
+      );
+
+    return (
+      Math.ceil(
+        n / step
+      ) *
+      step
+    );
+  }
+
+  function renderSummaryTable(
+    departments,
+    totals
+  ) {
+    const body =
+      document.getElementById(
+        'summaryBody'
+      );
+
+    body.innerHTML = '';
+
+    departments.forEach(
+      function(dep) {
+        const tr =
+          document.createElement(
+            'tr'
+          );
+
+        appendCell(
+          tr,
+          dep.displayName ||
+          dep.code ||
+          '-'
+        );
+
+        appendCell(
+          tr,
+          dep.statusCounts.OPEN || 0
+        );
+
+        appendCell(
+          tr,
+          dep.statusCounts.IN_PROGRESS || 0
+        );
+
+        appendCell(
+          tr,
+          dep.statusCounts.WAITING_QA || 0
+        );
+
+        appendCell(
+          tr,
+          dep.statusCounts.REWORK || 0
+        );
+
+        appendCell(
+          tr,
+          dep.statusCounts.CLOSED || 0
+        );
+
+        appendCell(
+          tr,
+          dep.total || 0
+        );
+
+        body.appendChild(
+          tr
+        );
+      }
+    );
+
+    const totalRow =
+      document.createElement(
+        'tr'
+      );
+
+    totalRow.className =
+      'total-row';
+
+    appendCell(
+      totalRow,
+      'รวมทั้งหมด'
+    );
+
+    appendCell(
+      totalRow,
+      totals.OPEN || 0
+    );
+
+    appendCell(
+      totalRow,
+      totals.IN_PROGRESS || 0
+    );
+
+    appendCell(
+      totalRow,
+      totals.WAITING_QA || 0
+    );
+
+    appendCell(
+      totalRow,
+      totals.REWORK || 0
+    );
+
+    appendCell(
+      totalRow,
+      totals.CLOSED || 0
+    );
+
+    appendCell(
+      totalRow,
+      totals.TOTAL || 0
+    );
+
+    body.appendChild(
+      totalRow
+    );
+  }
+
+  function appendCell(
+    row,
+    value
+  ) {
+    const td =
+      document.createElement(
+        'td'
+      );
+
+    td.textContent =
+      value;
+
+    row.appendChild(
+      td
+    );
+  }
+
+  function numberText(value) {
+    return Number(
+      value || 0
+    ).toLocaleString();
+  }
+
+  function showDashboardError(message) {
+    document.getElementById(
+      'chartArea'
+    ).innerHTML =
+      '<div class="error"></div>';
+
+    document
+      .querySelector(
+        '#chartArea .error'
+      )
+      .textContent =
+        message;
+
+    document.getElementById(
+      'summaryBody'
+    ).innerHTML =
+      '<tr><td colspan="7" class="error"></td></tr>';
+
+    document
+      .querySelector(
+        '#summaryBody .error'
+      )
+      .textContent =
+        message;
+  }
+</script>
+
+</body>
+</html>

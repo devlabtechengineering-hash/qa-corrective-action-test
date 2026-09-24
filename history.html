@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="referrer" content="no-referrer">
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-api.js"></script>
+  <script src="navigation.js"></script>
+  <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
+
+  <base target="_top">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    .page-header {
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      padding: 20px;
+    }
+
+    .page-header-inner {
+      max-width: 950px;
+      margin: auto;
+    }
+
+    .page-header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .page-header p {
+      margin: 6px 0 0;
+      color: #666;
+    }
+
+    .container {
+      max-width: 950px;
+      margin: 25px auto;
+      padding: 0 15px 50px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 22px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+      gap: 14px 18px;
+    }
+
+    .field {
+      min-width: 0;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: #555;
+      font-weight: 700;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 11px;
+      border: 1px solid #cfd4da;
+      border-radius: 8px;
+      font-size: 15px;
+      background: #fff;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: #111827;
+      color: #fff;
+    }
+
+    .secondary {
+      background: #e5e7eb;
+      color: #222;
+    }
+
+    .result-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
+    .result-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .result-count {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .job-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .job-card {
+      border: 1px solid #e1e5ea;
+      border-radius: 10px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .job-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .job-id {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #eee;
+    }
+
+    .status.OPEN {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status.IN_PROGRESS {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status.WAITING_QA {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    .status.REWORK {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .status.CLOSED {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .job-meta {
+      display: grid;
+      grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+      gap: 8px 14px;
+      margin-bottom: 10px;
+    }
+
+    .meta-label {
+      color: #777;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .meta-value {
+      font-size: 14px;
+      word-break: break-word;
+    }
+
+    .problem {
+      padding: 10px 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .job-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .open-link {
+      display: inline-block;
+      text-decoration: none;
+      padding: 9px 14px;
+      background: #111827;
+      color: #fff !important;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .loading,
+    .empty,
+    .error {
+      text-align: center;
+      padding: 35px 15px;
+      color: #666;
+    }
+
+    .error {
+      color: #b91c1c;
+      background: #fee2e2;
+      border-radius: 8px;
+    }
+
+    @media(max-width:700px) {
+      .filter-grid,
+      .job-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .actions button {
+        flex: 1;
+      }
+
+      .job-actions .open-link {
+        width: 100%;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+
+<body class="qa-auth-loading">
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <h1>ค้นหาใบงาน / Job History</h1>
+    <p>
+      ค้นหางานเก่าจาก Job ID, Serial Number,
+      แผนก, สถานะ หรือช่วงวันที่
+    </p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+
+    <div class="filter-grid">
+
+      <div class="field">
+        <label for="jobId">
+          Job ID
+        </label>
+        <input
+          id="jobId"
+          type="text"
+          placeholder="เช่น IPN-2026-0001">
+      </div>
+
+      <div class="field">
+        <label for="serialNo">
+          Serial Number
+        </label>
+        <input
+          id="serialNo"
+          type="text"
+          placeholder="เช่น LE-1234-567">
+      </div>
+
+      <div class="field">
+        <label for="department">
+          แผนกที่รับแจ้ง
+        </label>
+        <select id="department">
+          <option value="">
+            ทุกแผนก
+          </option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="status">
+          Status
+        </label>
+        <select id="status">
+          <option value="">
+            ทุกสถานะ
+          </option>
+          <option value="OPEN">
+            OPEN
+          </option>
+          <option value="IN_PROGRESS">
+            IN_PROGRESS
+          </option>
+          <option value="WAITING_QA">
+            WAITING_QA
+          </option>
+          <option value="REWORK">
+            REWORK
+          </option>
+          <option value="CLOSED">
+            CLOSED
+          </option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="dateFrom">
+          วันที่แจ้งตั้งแต่
+        </label>
+        <input
+          id="dateFrom"
+          type="date">
+      </div>
+
+      <div class="field">
+        <label for="dateTo">
+          ถึงวันที่
+        </label>
+        <input
+          id="dateTo"
+          type="date">
+      </div>
+
+      <div
+        class="field"
+        style="grid-column:1/-1;">
+        <label for="keyword">
+          คำค้นหา
+        </label>
+        <input
+          id="keyword"
+          type="text"
+          placeholder="ค้นจากรายละเอียดปัญหา, ประเภท, ผู้รับผิดชอบ ฯลฯ">
+      </div>
+
+    </div>
+
+    <div class="actions">
+      <button
+        type="button"
+        class="secondary"
+        onclick="clearFilters()">
+        ล้างตัวกรอง
+      </button>
+
+      <button
+        type="button"
+        class="primary"
+        onclick="runSearch()">
+        ค้นหา
+      </button>
+    </div>
+
+  </div>
+
+  <div class="card">
+
+    <div class="result-head">
+      <div class="result-title">
+        รายการใบงาน
+      </div>
+
+      <div
+        id="resultCount"
+        class="result-count">
+      </div>
+    </div>
+
+    <div
+      id="resultArea"
+      class="job-list">
+
+      <div class="loading">
+        กำลังโหลดใบงานล่าสุด...
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const APP_URL =
+    new URL('job.html',location.href).href;
+
+  document.addEventListener(
+    'DOMContentLoaded',
+    function() {
+      loadDepartments();
+      runSearch();
+    }
+  );
+
+  function loadDepartments() {
+    QA.run
+
+      .withSuccessHandler(
+        function(settings) {
+
+          const select =
+            document.getElementById(
+              'department'
+            );
+
+          const items =
+            settings &&
+            settings.departments
+              ? settings.departments
+              : [];
+
+          items.forEach(
+            function(item) {
+
+              const option =
+                document.createElement(
+                  'option'
+                );
+
+              option.value =
+                item.code;
+
+              option.textContent =
+                item.code +
+                (
+                  item.name &&
+                  item.name !== item.code
+                    ? ' - ' + item.name
+                    : ''
+                );
+
+              select.appendChild(
+                option
+              );
+
+            }
+          );
+
+        }
+      )
+
+      .getSettings();
+  }
+
+  function getFilters() {
+    return {
+      jobId:
+        document.getElementById(
+          'jobId'
+        ).value,
+
+      serialNo:
+        document.getElementById(
+          'serialNo'
+        ).value,
+
+      department:
+        document.getElementById(
+          'department'
+        ).value,
+
+      status:
+        document.getElementById(
+          'status'
+        ).value,
+
+      dateFrom:
+        document.getElementById(
+          'dateFrom'
+        ).value,
+
+      dateTo:
+        document.getElementById(
+          'dateTo'
+        ).value,
+
+      keyword:
+        document.getElementById(
+          'keyword'
+        ).value
+    };
+  }
+
+  function clearFilters() {
+    [
+      'jobId',
+      'serialNo',
+      'department',
+      'status',
+      'dateFrom',
+      'dateTo',
+      'keyword'
+    ].forEach(
+      function(id) {
+        document.getElementById(id).value = '';
+      }
+    );
+
+    runSearch();
+  }
+
+  function runSearch() {
+
+    const area =
+      document.getElementById(
+        'resultArea'
+      );
+
+    const count =
+      document.getElementById(
+        'resultCount'
+      );
+
+    area.innerHTML =
+      '<div class="loading">กำลังค้นหา...</div>';
+
+    count.textContent = '';
+
+    QA.run
+
+      .withSuccessHandler(
+        function(result) {
+
+          if (
+            !result ||
+            !result.success
+          ) {
+            showError(
+              result &&
+              result.message
+                ? result.message
+                : 'ค้นหาไม่สำเร็จ'
+            );
+            return;
+          }
+
+          renderJobs(
+            result.jobs || []
+          );
+
+        }
+      )
+
+      .withFailureHandler(
+        function(error) {
+          showError(
+            error.message ||
+            'ค้นหาไม่สำเร็จ'
+          );
+        }
+      )
+
+      .searchJobs(
+        getFilters()
+      );
+  }
+
+  function renderJobs(jobs) {
+
+    const area =
+      document.getElementById(
+        'resultArea'
+      );
+
+    const count =
+      document.getElementById(
+        'resultCount'
+      );
+
+    count.textContent =
+      'พบ ' +
+      jobs.length +
+      ' ใบงาน';
+
+    area.innerHTML = '';
+
+    if (!jobs.length) {
+      area.innerHTML =
+        '<div class="empty">ไม่พบใบงานตามเงื่อนไขที่ค้นหา</div>';
+      return;
+    }
+
+    jobs.forEach(
+      function(job) {
+
+        const card =
+          document.createElement(
+            'div'
+          );
+
+        card.className =
+          'job-card';
+
+        const top =
+          document.createElement(
+            'div'
+          );
+
+        top.className =
+          'job-top';
+
+        const id =
+          document.createElement(
+            'div'
+          );
+
+        id.className =
+          'job-id';
+
+        id.textContent =
+          job.jobId || '-';
+
+        const status =
+          document.createElement(
+            'span'
+          );
+
+        status.className =
+          'status ' +
+          (
+            job.status || ''
+          );
+
+        status.textContent =
+          job.status || '-';
+
+        top.appendChild(id);
+        top.appendChild(status);
+
+        card.appendChild(top);
+
+        const meta =
+          document.createElement(
+            'div'
+          );
+
+        meta.className =
+          'job-meta';
+
+        addMeta(
+          meta,
+          'วันที่แจ้ง',
+          job.createdDateTime || '-'
+        );
+
+        addMeta(
+          meta,
+          'Serial No.',
+          job.serialNo || '-'
+        );
+
+        addMeta(
+          meta,
+          'แผนกที่รับแจ้ง',
+          job.toDepartment || '-'
+        );
+
+        addMeta(
+          meta,
+          'ประเภท',
+          job.category || '-'
+        );
+
+        addMeta(
+          meta,
+          'Priority',
+          job.priority || '-'
+        );
+
+        addMeta(
+          meta,
+          'ผู้รับผิดชอบ',
+          job.assigneeName || '-'
+        );
+
+        card.appendChild(meta);
+
+        const problem =
+          document.createElement(
+            'div'
+          );
+
+        problem.className =
+          'problem';
+
+        problem.textContent =
+          job.problemDetail || '-';
+
+        card.appendChild(
+          problem
+        );
+
+        const actions =
+          document.createElement(
+            'div'
+          );
+
+        actions.className =
+          'job-actions';
+
+        const link =
+          document.createElement(
+            'a'
+          );
+
+        link.className =
+          'open-link';
+
+        link.textContent =
+          'เปิดใบงาน';
+
+        link.href =
+          APP_URL +
+          '?job=' +
+          encodeURIComponent(
+            job.jobId
+          );
+
+        actions.appendChild(link);
+        card.appendChild(actions);
+
+        area.appendChild(card);
+
+      }
+    );
+  }
+
+  function addMeta(
+    parent,
+    label,
+    value
+  ) {
+
+    const wrapper =
+      document.createElement(
+        'div'
+      );
+
+    const labelEl =
+      document.createElement(
+        'div'
+      );
+
+    labelEl.className =
+      'meta-label';
+
+    labelEl.textContent =
+      label;
+
+    const valueEl =
+      document.createElement(
+        'div'
+      );
+
+    valueEl.className =
+      'meta-value';
+
+    valueEl.textContent =
+      value;
+
+    wrapper.appendChild(
+      labelEl
+    );
+
+    wrapper.appendChild(
+      valueEl
+    );
+
+    parent.appendChild(
+      wrapper
+    );
+  }
+
+  function showError(message) {
+    const area =
+      document.getElementById(
+        'resultArea'
+      );
+
+    area.innerHTML = '';
+
+    const box =
+      document.createElement(
+        'div'
+      );
+
+    box.className =
+      'error';
+
+    box.textContent =
+      message;
+
+    area.appendChild(
+      box
+    );
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="referrer" content="no-referrer">
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-api.js"></script>
+  <script src="navigation.js"></script>
+  <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
+
+  <base target="_top">
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #222;
+    }
+
+    .header {
+      background: white;
+      border-bottom: 1px solid #ddd;
+      padding: 20px;
+    }
+
+    .header-inner {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .header p {
+      color: #666;
+      margin: 6px 0 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 25px auto;
+      padding: 0 15px 50px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: bold;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .field {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 7px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 11px;
+      border: 1px solid #ccc;
+      border-radius: 7px;
+      font-size: 15px;
+      background: white;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .required {
+      color: red;
+    }
+
+    .upload-box {
+      border: 2px dashed #bbb;
+      border-radius: 10px;
+      padding: 22px;
+      text-align: center;
+      background: #fafafa;
+    }
+
+    .upload-box input {
+      margin-top: 12px;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fill, minmax(180px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .preview-item {
+      border: 1px solid #ddd;
+      border-radius: 9px;
+      padding: 10px;
+      background: white;
+    }
+
+    .preview-item img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+
+    .preview-item input {
+      margin-bottom: 8px;
+    }
+
+    .remove-btn {
+      width: 100%;
+      padding: 8px;
+      background: #eee;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .button-area {
+      text-align: right;
+      margin-top: 25px;
+    }
+
+    #submitBtn {
+      padding: 13px 30px;
+      border: 0;
+      border-radius: 8px;
+      background: #222;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #submitBtn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .message {
+      display: none;
+      padding: 18px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .success {
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+
+    .error {
+      background: #ffebee;
+      color: #b71c1c;
+    }
+
+    .job-number {
+      font-size: 25px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .upload-status {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    @media(max-width:650px) {
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+<body class="qa-auth-loading">
+
+<div class="header">
+
+  <div class="header-inner">
+
+    <h1>QA Corrective Action</h1>
+
+    <p>
+      ใบแจ้งปัญหาระหว่างแผนก
+      (Inter-Department Problem Notice)
+    </p>
+
+  </div>
+
+</div>
+
+<div class="container">
+
+<div id="messageBox"
+     class="message"></div>
+
+<form id="jobForm">
+
+<!-- ================= GENERAL ================= -->
+
+<div class="card">
+
+  <div class="section-title">
+    1. ข้อมูลการแจ้งเรื่อง
+  </div>
+
+  <div class="grid">
+
+    <div class="field">
+
+      <label>
+        ผู้แจ้ง
+        <span class="required">*</span>
+      </label>
+
+      <input
+        id="issuerName"
+        type="text"
+        value=""
+        required>
+
+    </div>
+
+    <div class="field">
+
+      <label>แผนกผู้แจ้ง</label>
+
+      <input
+        type="text"
+        value="QA"
+        disabled>
+
+    </div>
+
+    <div class="field">
+
+      <label>
+        แผนกที่รับแจ้ง
+        <span class="required">*</span>
+      </label>
+
+      <select
+        id="toDepartment"
+        required>
+
+        <option value="">
+          -- เลือกแผนก --
+        </option>
+
+      </select>
+
+    </div>
+
+    <div class="field">
+
+      <label>
+        Serial Number
+      </label>
+
+      <input
+        id="serialNo"
+        type="text">
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ================= PROBLEM ================= -->
+
+<div class="card">
+
+  <div class="section-title">
+    2. รายละเอียดปัญหาที่พบ
+  </div>
+
+  <div class="grid">
+
+    <div class="field">
+
+      <label>
+        ประเภทปัญหา
+        <span class="required">*</span>
+      </label>
+
+      <select
+        id="category"
+        required>
+
+        <option value="">
+          -- เลือกประเภท --
+        </option>
+
+      </select>
+
+    </div>
+
+    <div class="field">
+
+      <label>
+        ความเร่งด่วน
+      </label>
+
+      <select id="priority">
+
+        <option value="">
+          -- เลือกความเร่งด่วน --
+        </option>
+
+      </select>
+
+    </div>
+
+    <div class="field">
+
+      <label>ผลกระทบ</label>
+
+      <input
+        id="impact"
+        type="text">
+
+    </div>
+
+    <div class="field">
+
+      <label>สถานที่ / ไลน์</label>
+
+      <input
+        id="location"
+        type="text">
+
+    </div>
+
+    <div class="field">
+
+      <label>Downtime (นาที)</label>
+
+      <input
+        id="downtimeMin"
+        type="number"
+        min="0">
+
+    </div>
+
+  </div>
+
+  <div class="field">
+
+    <label>
+      รายละเอียดปัญหา
+      <span class="required">*</span>
+    </label>
+
+    <textarea
+      id="problemDetail"
+      required></textarea>
+
+  </div>
+
+</div>
+
+<!-- ================= IMAGE ================= -->
+
+<div class="card">
+
+  <div class="section-title">
+    3. รูปภาพปัญหา
+  </div>
+
+  <div class="upload-box">
+
+    <strong>
+      เพิ่มรูปภาพ
+    </strong>
+
+    <div class="upload-status">
+      สามารถเลือกได้หลายรูปพร้อมกัน
+    </div>
+
+    <input
+      id="imageInput"
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      multiple>
+
+  </div>
+
+  <div
+    id="previewGrid"
+    class="preview-grid">
+  </div>
+
+</div>
+
+<!-- ================= BUTTON ================= -->
+
+<div class="card">
+
+  <div class="button-area">
+
+    <button
+      id="submitBtn"
+      type="submit">
+
+      แจ้งปัญหา
+
+    </button>
+
+  </div>
+
+</div>
+
+</form>
+
+</div>
+
+<script>
+
+let selectedFiles = [];
+
+/* =====================================================
+   START
+===================================================== */
+
+document.addEventListener(
+  'DOMContentLoaded',
+  loadSettings
+);
+
+/* =====================================================
+   SETTINGS
+===================================================== */
+
+function loadSettings() {
+
+  QA.run
+
+    .withSuccessHandler(function(data) {
+
+      fillSelect(
+        'toDepartment',
+        data.departments
+      );
+
+      fillSelect(
+        'category',
+        data.categories
+      );
+
+      fillSelect(
+        'priority',
+        data.priorities
+      );
+
+      const priority =
+        document.getElementById('priority');
+
+      if (
+        [...priority.options]
+          .some(x => x.value === 'NORMAL')
+      ) {
+
+        priority.value = 'NORMAL';
+
+      }
+
+    })
+
+    .withFailureHandler(function(error) {
+
+      showMessage(
+        'โหลด Settings ไม่สำเร็จ: ' +
+        error.message,
+        false
+      );
+
+    })
+
+    .getSettings();
+
+}
+
+function fillSelect(id, items) {
+
+  const select =
+    document.getElementById(id);
+
+  items.forEach(item => {
+
+    const option =
+      document.createElement('option');
+
+    option.value = item.code;
+    option.textContent = item.name;
+
+    select.appendChild(option);
+
+  });
+
+}
+
+/* =====================================================
+   SELECT IMAGE
+===================================================== */
+
+document
+  .getElementById('imageInput')
+  .addEventListener(
+    'change',
+    function(event) {
+
+      const files =
+        Array.from(event.target.files);
+
+      files.forEach(file => {
+
+        // รับเฉพาะรูป
+        if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > QA_CONFIG.maxImageBytes) { showMessage('Only JPEG / PNG / WebP, maximum 5 MiB per image.', false); return; }
+
+        selectedFiles.push({
+
+          id:
+            Date.now() +
+            '-' +
+            Math.random(),
+
+          file: file,
+
+          description: ''
+
+        });
+
+      });
+
+      renderPreview();
+
+      // ทำให้เลือกไฟล์เดิมซ้ำได้
+      event.target.value = '';
+
+    }
+  );
+
+/* =====================================================
+   PREVIEW
+===================================================== */
+
+function renderPreview() {
+
+  const grid =
+    document.getElementById('previewGrid');
+
+  grid.innerHTML = '';
+
+  selectedFiles.forEach(item => {
+
+    const reader =
+      new FileReader();
+
+    reader.onload = function(e) {
+
+      const div =
+        document.createElement('div');
+
+      div.className =
+        'preview-item';
+
+      const img =
+        document.createElement('img');
+
+      img.src = e.target.result;
+
+      const input =
+        document.createElement('input');
+
+      input.type = 'text';
+      input.placeholder =
+        'คำอธิบายรูป (ถ้ามี)';
+
+      input.value =
+        item.description;
+
+      input.addEventListener(
+        'input',
+        function() {
+
+          item.description =
+            input.value;
+
+        }
+      );
+
+      const button =
+        document.createElement('button');
+
+      button.type = 'button';
+      button.className =
+        'remove-btn';
+
+      button.textContent =
+        'ลบรูป';
+
+      button.onclick = function() {
+
+        selectedFiles =
+          selectedFiles.filter(
+            x => x.id !== item.id
+          );
+
+        renderPreview();
+
+      };
+
+      div.appendChild(img);
+      div.appendChild(input);
+      div.appendChild(button);
+
+      grid.appendChild(div);
+
+    };
+
+    reader.readAsDataURL(item.file);
+
+  });
+
+}
+
+/* =====================================================
+   FILE → BASE64
+===================================================== */
+
+async function prepareUpload(item) {
+    return QA.prepareFile(item);
+  }
+
+  /* =====================================================
+   SUBMIT
+===================================================== */
+
+document
+  .getElementById('jobForm')
+  .addEventListener(
+    'submit',
+    async function(event) {
+
+      event.preventDefault();
+
+      const button =
+        document.getElementById(
+          'submitBtn'
+        );
+
+      button.disabled = true;
+
+      button.textContent =
+        selectedFiles.length > 0
+        ? 'กำลังบันทึกและอัปโหลดรูป...'
+        : 'กำลังบันทึก...';
+
+      try {
+
+        const files = await Promise.all(
+          selectedFiles.map(
+            prepareUpload
+          )
+        );
+
+        const formData = {
+
+          issuerName:
+            document
+              .getElementById(
+                'issuerName'
+              )
+              .value.trim(),
+
+          toDepartment:
+            document
+              .getElementById(
+                'toDepartment'
+              )
+              .value,
+
+          serialNo:
+            document
+              .getElementById(
+                'serialNo'
+              )
+              .value.trim(),
+
+          category:
+            document
+              .getElementById(
+                'category'
+              )
+              .value,
+
+          priority:
+            document
+              .getElementById(
+                'priority'
+              )
+              .value,
+
+          impact:
+            document
+              .getElementById(
+                'impact'
+              )
+              .value.trim(),
+
+          location:
+            document
+              .getElementById(
+                'location'
+              )
+              .value.trim(),
+
+          downtimeMin:
+            document
+              .getElementById(
+                'downtimeMin'
+              )
+              .value,
+
+          problemDetail:
+            document
+              .getElementById(
+                'problemDetail'
+              )
+              .value.trim(),
+
+          files: files
+
+        };
+
+        QA.run
+
+          .withSuccessHandler(
+            function(result) {
+
+              button.disabled = false;
+              button.textContent =
+                'แจ้งปัญหา';
+
+              if (!result.success) {
+
+                showMessage(
+                  result.message,
+                  false
+                );
+
+                return;
+
+              }
+
+              showMessage(
+
+                'สร้างใบแจ้งปัญหาสำเร็จ' +
+
+                '<div class="job-number"><a href="job.html?job=' + encodeURIComponent(result.jobId) + '">' +
+                result.jobId +
+                '</a></div>' +
+
+                '<div>บันทึกรูปภาพ ' +
+                result.uploadedCount +
+                ' รูป</div>',
+
+                true
+
+              );
+
+              document
+                .getElementById(
+                  'jobForm'
+                )
+                .reset();
+
+              selectedFiles = [];
+
+              renderPreview();
+
+              const priority =
+                document.getElementById(
+                  'priority'
+                );
+
+              if (
+                [...priority.options]
+                .some(
+                  x =>
+                    x.value ===
+                    'NORMAL'
+                )
+              ) {
+
+                priority.value =
+                  'NORMAL';
+
+              }
+
+              window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+              });
+
+            }
+          )
+
+          .withFailureHandler(
+            function(error) {
+
+              button.disabled = false;
+
+              button.textContent =
+                'แจ้งปัญหา';
+
+              showMessage(
+                'เกิดข้อผิดพลาด: ' +
+                error.message,
+                false
+              );
+
+            }
+          )
+
+          .createJob(formData);
+
+      } catch (error) {
+
+        button.disabled = false;
+
+        button.textContent =
+          'แจ้งปัญหา';
+
+        showMessage(
+          'ไม่สามารถอ่านรูปภาพได้: ' +
+          error.message,
+          false
+        );
+
+      }
+
+    }
+  );
+
+/* =====================================================
+   MESSAGE
+===================================================== */
+
+function showMessage(
+  message,
+  success
+) {
+
+  const box =
+    document.getElementById(
+      'messageBox'
+    );
+
+  box.className =
+    'message ' +
+    (
+      success
+      ? 'success'
+      : 'error'
+    );
+
+  box.innerHTML = success ? message : QA.escape(message);
+
+  box.style.display =
+    'block';
+
+}
+
+</script>
+
+</body>
+
+</html>
