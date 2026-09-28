@@ -269,7 +269,7 @@ function buildAppNavHtml_(baseUrl, activePage) {
               'Corrective Action',
             '</div>',
             '<div class="qa-side-brand-sub">',
-              'Internal QA System',
+              'Internal Work Request System',
             '</div>',
           '</div>',
         '</div>',
@@ -287,7 +287,7 @@ function buildAppNavHtml_(baseUrl, activePage) {
           htmlEscapeServer_(createUrl),
         '">',
           '<span class="qa-side-icon">＋</span>',
-          '<span>แจ้งปัญหา</span>',
+          '<span>แจ้งงาน</span>',
         '</a>',
 
         '<a class="',
@@ -320,7 +320,7 @@ function buildAppNavHtml_(baseUrl, activePage) {
       '</nav>',
 
       '<div class="qa-side-footer">',
-        'QA Corrective Action System',
+        'Inter-Department Work Request System',
         '<div id="qa-release-version" style="margin:6px 0;">V33.1.0</div>',
       '</div>',
 

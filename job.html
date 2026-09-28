@@ -9,8 +9,8 @@
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=33.1.0"></script>
-  <script src="navigation.js?v=33.2.1-logo1"></script>
+  <script src="supabase-api.js?v=34.0"></script>
+  <script src="navigation.js?v=34.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -107,7 +107,7 @@
       color: #1e40af;
     }
 
-    .status.WAITING_QA {
+    .status.WAITING_REVIEW {
       background: #ede9fe;
       color: #5b21b6;
     }
@@ -367,7 +367,7 @@
     #jobProgressCard[data-status="IN_PROGRESS"] {
       --qpt-accent: #1d4ed8; --qpt-soft: #eff6ff; --qpt-ring: rgba(29,78,216,.2);
     }
-    #jobProgressCard[data-status="WAITING_QA"] {
+    #jobProgressCard[data-status="WAITING_REVIEW"] {
       --qpt-accent: #6d28d9; --qpt-soft: #f5f3ff; --qpt-ring: rgba(109,40,217,.2);
     }
     #jobProgressCard[data-status="REWORK"] {
@@ -477,15 +477,15 @@
     }
   </style>
 
-  <script src="report.js?v=33.1.1"></script>
+  <script src="report.js?v=34.0"></script>
 </head>
 
 <body class="qa-auth-loading">
 
 <div class="header">
   <div class="header-inner">
-    <h1>QA Corrective Action</h1>
-    <p>รายละเอียดใบแจ้งปัญหา / การดำเนินการแก้ไข</p>
+    <h1>Inter-Department Work Request</h1>
+    <p>รายละเอียดใบงาน / การดำเนินการ</p>
   </div>
 </div>
 
@@ -545,7 +545,7 @@
         </div>
       </div>
       <div id="jobProgressReturn" class="qpt-return" hidden>
-        <strong id="jobProgressReturnTitle">QA ส่งกลับแก้ไข</strong>
+        <strong id="jobProgressReturnTitle">ผู้แจ้งส่งกลับแก้ไข</strong>
         <p id="jobProgressReturnText"></p>
       </div>
       <dl class="qpt-facts">
@@ -561,7 +561,7 @@
     </section>
 
 
-    <!-- QA INFORMATION -->
+    <!-- REQUEST INFORMATION -->
     <div class="card">
 
       <div class="section-title">
@@ -576,7 +576,12 @@
         </div>
 
         <div>
-          <div class="info-label">แผนกที่รับแจ้ง</div>
+          <div class="info-label">แผนกผู้แจ้ง</div>
+          <div id="fromDepartmentDisplay" class="info-value"></div>
+        </div>
+
+        <div>
+          <div class="info-label">แผนกผู้รับงาน</div>
           <div id="toDepartment" class="info-value"></div>
         </div>
 
@@ -680,11 +685,11 @@
 
   <div class="section-title"
        style="color:#b91c1c;">
-    ⚠ QA ส่งกลับให้แก้ไข
+    ⚠ ผู้แจ้งส่งกลับให้แก้ไข
   </div>
 
   <div class="info-label">
-    ข้อเสนอแนะ / เหตุผลจาก QA
+    ข้อเสนอแนะ / เหตุผลจากผู้แจ้ง
   </div>
 
   <div id="reworkComment"
@@ -700,7 +705,7 @@
             color:#666;">
     การแก้ไขรอบก่อนถูกล็อกไว้แล้ว
     กรุณากรอกการแก้ไขเพิ่มเติมเป็นรอบใหม่ด้านล่าง
-    แล้วส่งให้ QA ตรวจอีกครั้ง
+    แล้วส่งให้ผู้แจ้งตรวจอีกครั้ง
   </p>
 
 </div>
@@ -789,27 +794,27 @@
           class="submit"
           type="button"
           onclick="saveWork(true)">
-          ส่งให้ QA ตรวจ
+          ส่งให้ผู้แจ้งตรวจ
         </button>
 
       </div>
 
     </div>
 
-<!-- ================= QA VERIFICATION ================= -->
+<!-- ================= REQUESTER REVIEW ================= -->
 
 <div id="qaCard"
      class="card"
      style="display:none;">
 
   <div class="section-title">
-    QA Verification / ผลการตรวจสอบ
+    Requester Review / ผลการตรวจรับจากแผนกผู้แจ้ง
   </div>
 
   <div class="field">
 
     <label>
-      ผู้ตรวจสอบ QA
+      ผู้ตรวจรับ
       <span class="required">*</span>
     </label>
 
@@ -824,7 +829,7 @@
   <div class="field">
 
     <label>
-      ความเห็น / ข้อเสนอแนะของ QA
+      ความเห็น / ข้อเสนอแนะของผู้ตรวจรับ
     </label>
 
     <textarea
@@ -864,12 +869,12 @@
          style="display:none;">
 
       <div class="section-title">
-        รอ QA ตรวจสอบ
+        รอผู้แจ้งตรวจรับ
       </div>
 
       <p>
         ฝ่ายผู้รับผิดชอบส่งผลการแก้ไขแล้ว
-        ขณะนี้งานอยู่ระหว่างรอ QA ตรวจสอบ
+        ขณะนี้งานอยู่ระหว่างรอผู้แจ้งตรวจรับ
       </p>
 
     </div>
@@ -884,7 +889,7 @@
       </div>
 
       <p>
-        QA ตรวจสอบและปิดงานนี้แล้ว
+        แผนกผู้แจ้งตรวจรับและปิดงานนี้แล้ว
       </p>
 
     </div>
@@ -957,6 +962,7 @@
 
     setText('jobIdDisplay', currentJob.jobId);
     setText('issuerName', currentJob.issuerName);
+    setText('fromDepartmentDisplay', currentJob.fromDepartment || '-');
     setText('toDepartment', currentJob.toDepartment);
     setText('serialNo', currentJob.serialNo || '-');
     setText('createdDateTime', currentJob.createdDateTime);
@@ -983,7 +989,7 @@
       );
 
     QA.setStatusBadge(status, currentJob.status);
-    document.title = currentJob.jobId + ' | ' + QA.statusInfo(currentJob.status).label + ' | QA';
+    document.title = currentJob.jobId + ' | ' + QA.statusInfo(currentJob.status).label + ' | Work Request';
 
     document.getElementById(
       'assigneeName'
@@ -1035,16 +1041,17 @@ renderCorrectiveHistory(
     const j = job && typeof job === 'object' ? job : {};
     const p = profile && typeof profile === 'object' ? profile : {};
     const rawStatus = String(j.status || '').trim().toUpperCase();
-    const stages = {OPEN:0, IN_PROGRESS:1, WAITING_QA:2, REWORK:1, CLOSED:3};
+    const stages = {OPEN:0, IN_PROGRESS:1, WAITING_REVIEW:2, REWORK:1, CLOSED:3};
     const known = Object.prototype.hasOwnProperty.call(stages, rawStatus);
     const status = known ? rawStatus : 'UNKNOWN';
     const stage = known ? stages[status] : -1;
     const department = String(j.toDepartment || '').trim();
-    const destination = department ? 'แผนก ' + department : 'แผนกผู้รับแจ้ง';
-    const canWork = p.role === 'admin' || (
-      p.role === 'department' && department !== '' && p.department === department
-    );
-    const canVerify = ['qa', 'admin'].includes(p.role);
+    const sourceDepartment = String(j.fromDepartment || '').trim();
+    const destination = department ? 'แผนก ' + department : 'แผนกผู้รับงาน';
+    const requester = sourceDepartment ? 'แผนก ' + sourceDepartment : 'แผนกผู้แจ้ง';
+    const isDeptActor = ['qa','department'].includes(p.role);
+    const canWork = p.role === 'admin' || (isDeptActor && department !== '' && p.department === department);
+    const canVerify = p.role === 'admin' || (isDeptActor && sourceDepartment !== '' && p.department === sourceDepartment);
     const logs = (Array.isArray(j.correctiveLogs) ? j.correctiveLogs : []).filter(
       log => log && typeof log === 'object'
     );
@@ -1061,7 +1068,7 @@ renderCorrectiveHistory(
     ));
     const activeRound = ['IN_PROGRESS','REWORK'].includes(status)
       ? (maxRound < Number.MAX_SAFE_INTEGER ? maxRound + 1 : null)
-      : (['WAITING_QA','CLOSED'].includes(status) ? (maxRound || null) : null);
+      : (['WAITING_REVIEW','CLOSED'].includes(status) ? (maxRound || null) : null);
     const roundLabel = status === 'OPEN' ? 'ยังไม่เริ่ม'
       : activeRound ? 'รอบที่ ' + activeRound : 'ไม่พบเลขรอบในข้อมูล';
     const roundText = activeRound ? 'รอบที่ ' + activeRound : 'รอบปัจจุบัน';
@@ -1071,10 +1078,10 @@ renderCorrectiveHistory(
     let nextDetail = 'โหลดใบงานใหม่ หากยังไม่พบสถานะ ให้ผู้ดูแลตรวจสอบข้อมูลก่อนดำเนินการ';
     let target = '', focus = '', actionLabel = '';
     let stageText = stage >= 0 ? 'ขั้นที่ ' + (stage + 1) + ' จาก 4' : 'ไม่ทราบขั้นตอน';
-    const titles = ['แจ้งปัญหา', 'ดำเนินการแก้ไข', 'QA ตรวจสอบ', 'ปิดงาน'];
-    const meta = ['บันทึกใบแจ้งแล้ว', 'รับงานและแก้ไข', 'ตรวจผลการแก้ไข', 'รอ QA ยืนยันผล'];
+    const titles = ['แจ้งงาน', 'ดำเนินการ', 'ผู้แจ้งตรวจรับ', 'ปิดงาน'];
+    const meta = ['บันทึกใบงานแล้ว', 'รับงานและดำเนินการ', 'ผู้แจ้งตรวจรับผล', 'รอผู้แจ้งยืนยันผล'];
     if (status === 'OPEN') {
-      overview = 'แจ้งปัญหาแล้ว · รอ ' + destination + ' รับงาน';
+      overview = 'แจ้งงานแล้ว · รอ ' + destination + ' รับงาน';
       owner = destination;
       nextTitle = destination + ' เป็นผู้ดำเนินการต่อ';
       nextDetail = canWork
@@ -1085,29 +1092,29 @@ renderCorrectiveHistory(
     } else if (status === 'IN_PROGRESS' || status === 'REWORK') {
       owner = destination;
       overview = status === 'REWORK'
-        ? 'QA ส่งกลับแก้ไข · รอ ' + destination + ' แก้ไขเพิ่มเติม'
+        ? 'ผู้แจ้งส่งกลับแก้ไข · รอ ' + destination + ' แก้ไขเพิ่มเติม'
         : afterReject ? 'กำลังแก้ไขเพิ่มเติม · ' + roundText
         : 'รับงานแล้ว · กำลังดำเนินการแก้ไข';
-      nextTitle = destination + ' บันทึกผลการแก้ไขและส่ง QA';
+      nextTitle = destination + ' บันทึกผลและส่งกลับให้ผู้แจ้งตรวจ';
       nextDetail = canWork
-        ? 'กรอกผู้รับผิดชอบ ผลการแก้ไข และหลักฐาน AFTER จากนั้น “บันทึกไว้ก่อน” หรือ “ส่งให้ QA ตรวจ” เมื่องานพร้อม'
-        : 'รอฝ่ายผู้รับผิดชอบบันทึกผลการแก้ไขและส่งให้ QA ตรวจ การบันทึกไว้ก่อนยังไม่ถือว่าส่งตรวจ';
+        ? 'กรอกผู้รับผิดชอบ ผลการดำเนินการ และหลักฐาน AFTER จากนั้น “บันทึกไว้ก่อน” หรือ “ส่งให้ผู้แจ้งตรวจ” เมื่องานพร้อม'
+        : 'รอฝ่ายผู้รับงานบันทึกผลการดำเนินการและส่งกลับให้ผู้แจ้งตรวจ การบันทึกไว้ก่อนยังไม่ถือว่าส่งตรวจ';
       titles[1] = afterReject ? 'แก้ไขเพิ่มเติม' : 'ดำเนินการแก้ไข';
-      meta[1] = roundText + (afterReject ? ' · หลัง QA ตีกลับ' : ' · อยู่ระหว่างแก้ไข');
-      meta[2] = afterReject ? 'รอส่งตรวจอีกครั้ง' : 'รอส่งให้ QA ตรวจ';
+      meta[1] = roundText + (afterReject ? ' · หลังผู้แจ้งตีกลับ' : ' · อยู่ระหว่างแก้ไข');
+      meta[2] = afterReject ? 'รอส่งตรวจอีกครั้ง' : 'รอส่งให้ผู้แจ้งตรวจ';
       if (canWork) {target='correctiveCard';focus='assigneeName';actionLabel='ไปกรอกการแก้ไข';}
-    } else if (status === 'WAITING_QA') {
-      overview = 'ส่งผลการแก้ไขแล้ว · รอ QA ตรวจ ' + roundText;
-      owner = 'QA';
-      nextTitle = 'QA ตรวจผลการแก้ไข ' + roundText;
+    } else if (status === 'WAITING_REVIEW') {
+      overview = 'ส่งผลการดำเนินการแล้ว · รอ ' + requester + ' ตรวจรับ ' + roundText;
+      owner = requester;
+      nextTitle = requester + ' ตรวจรับผลการดำเนินการ ' + roundText;
       nextDetail = canVerify
         ? 'ตรวจรายละเอียดและรูป AFTER แล้วเลือก “ผ่าน / ปิดงาน” หรือ “ไม่ผ่าน / ส่งกลับแก้ไข” พร้อมเหตุผล'
-        : 'ส่งผลเรียบร้อยแล้ว รอ QA ตรวจและแจ้งผล ข้อมูลของรอบที่ส่งตรวจถูกล็อกไว้แล้ว';
+        : 'ส่งผลเรียบร้อยแล้ว รอผู้แจ้งตรวจรับและแจ้งผล ข้อมูลของรอบที่ส่งตรวจถูกล็อกไว้แล้ว';
       meta[1] = 'ส่งผลการแก้ไขแล้ว';
       meta[2] = 'รอตรวจ ' + roundText;
       if (canVerify) {target='qaCard';focus='qaComment';actionLabel='ไปตรวจผลการแก้ไข';}
     } else if (status === 'CLOSED') {
-      overview = 'QA ตรวจผ่าน · ปิดใบงานเรียบร้อยแล้ว';
+      overview = 'ผู้แจ้งตรวจผ่าน · ปิดใบงานเรียบร้อยแล้ว';
       owner = 'ไม่มีขั้นตอนค้าง';
       nextTitle = 'งานเสร็จสิ้น';
       nextDetail = 'ดูรายละเอียดและรอบการแก้ไขย้อนหลังได้ หรือใช้ปุ่ม Export PDF ที่หัวใบงานเพื่อออกรายงาน';
@@ -1134,8 +1141,8 @@ renderCorrectiveHistory(
       steps, roundLabel:known ? roundLabel : 'ยังระบุไม่ได้',
       updated:String(j.lastUpdate || '').trim() || 'ไม่มีเวลาอัปเดตในข้อมูล',
       showReturn:afterReject,
-      returnTitle:status === 'REWORK' ? 'QA ส่งกลับแก้ไข — กลับมาที่ขั้นดำเนินการ' : 'กำลังแก้ไขต่อจากรอบที่ QA ส่งกลับ',
-      returnText:rejectComment || 'ดูเหตุผลจาก QA ในประวัติรอบการแก้ไขด้านล่าง',
+      returnTitle:status === 'REWORK' ? 'ผู้แจ้งส่งกลับแก้ไข — กลับมาที่ขั้นดำเนินการ' : 'กำลังดำเนินการต่อจากรอบที่ผู้แจ้งส่งกลับ',
+      returnText:rejectComment || 'ดูเหตุผลจากผู้แจ้งในประวัติรอบการแก้ไขด้านล่าง',
       animate:known && status !== 'CLOSED'};
   }
 
@@ -1251,7 +1258,7 @@ renderCorrectiveHistory(
 
       const submitBtn = document.getElementById('submitQaBtn');
       if (submitBtn) {
-        submitBtn.textContent = 'ส่งให้ QA ตรวจ';
+        submitBtn.textContent = 'ส่งให้ผู้แจ้งตรวจ';
       }
     }
 
@@ -1260,7 +1267,7 @@ renderCorrectiveHistory(
 
       setText(
         'reworkComment',
-        currentJob.qaComment || 'QA ส่งกลับให้แก้ไข'
+        currentJob.qaComment || 'ผู้แจ้งส่งกลับให้แก้ไข'
       );
 
       show('correctiveHistoryCard');
@@ -1271,11 +1278,11 @@ renderCorrectiveHistory(
 
       const submitBtn = document.getElementById('submitQaBtn');
       if (submitBtn) {
-        submitBtn.textContent = 'ส่งให้ QA ตรวจอีกครั้ง';
+        submitBtn.textContent = 'ส่งให้ผู้แจ้งตรวจอีกครั้ง';
       }
     }
 
-    else if (status === 'WAITING_QA') {
+    else if (status === 'WAITING_REVIEW') {
       show('correctiveHistoryCard');
 
       // รอบที่ส่งแล้วอยู่ใน Corrective_Log และแสดงแบบอ่านอย่างเดียวด้านบน
@@ -1350,7 +1357,7 @@ renderCorrectiveHistory(
     if (correctiveLabel) {
       correctiveLabel.innerHTML =
         isRework
-          ? 'การแก้ไขเพิ่มเติมจาก QA / Rework Action <span class="required">*</span>'
+          ? 'การแก้ไขเพิ่มเติมตามข้อเสนอแนะ / Rework Action <span class="required">*</span>'
           : 'การแก้ไขเบื้องต้น / Corrective Action <span class="required">*</span>';
     }
 
@@ -1422,7 +1429,7 @@ renderCorrectiveHistory(
 
       addHistoryLine(
         box,
-        'วันที่ส่ง QA',
+        'วันที่ส่งตรวจรับ',
         log.dateTime || '-'
       );
 
@@ -1481,17 +1488,17 @@ renderCorrectiveHistory(
 
       box.appendChild(imageGrid);
 
-      if (log.result && log.result !== 'WAITING_QA') {
+      if (log.result && log.result !== 'WAITING_REVIEW') {
 
         addHistoryLine(
           box,
-          'ผู้ตรวจ QA',
+          'ผู้ตรวจรับ',
           log.qaInspector || '-'
         );
 
         addHistoryLine(
           box,
-          'ความเห็น QA',
+          'ความเห็นผู้ตรวจรับ',
           log.qaComment || '-'
         );
 
@@ -1501,11 +1508,11 @@ renderCorrectiveHistory(
       result.className = 'history-result';
 
       if (log.result === 'PASS') {
-        result.textContent = 'QA: ผ่าน';
+        result.textContent = 'ผลตรวจรับ: ผ่าน';
       } else if (log.result === 'REJECT') {
-        result.textContent = 'QA: ไม่ผ่าน';
+        result.textContent = 'ผลตรวจรับ: ไม่ผ่าน';
       } else {
-        result.textContent = 'รอ QA ตรวจ';
+        result.textContent = 'รอผู้แจ้งตรวจรับ';
       }
 
       box.appendChild(result);
@@ -1780,7 +1787,7 @@ function enableCorrectiveForm() {
     ) {
 
       showMessage(
-        'กรุณากรอกการแก้ไขก่อนส่งให้ QA ตรวจ',
+        'กรุณากรอกการแก้ไขก่อนส่งให้ผู้แจ้งตรวจ',
         false
       );
 
@@ -1854,7 +1861,7 @@ function enableCorrectiveForm() {
           if (submitToQA) {
 
             showMessage(
-              'ส่งผลการแก้ไขให้ QA ตรวจเรียบร้อยแล้ว',
+              'ส่งผลการดำเนินการให้ผู้แจ้งตรวจเรียบร้อยแล้ว',
               true
             );
 
@@ -1998,7 +2005,7 @@ function enableCorrectiveForm() {
   }
 
 /* =====================================================
-   QA RESULT
+   REQUESTER REVIEW RESULT
 ===================================================== */
 
 async function submitQaResult(approved) {
@@ -2022,7 +2029,7 @@ async function submitQaResult(approved) {
   if (!inspector) {
 
     showMessage(
-      'กรุณากรอกชื่อผู้ตรวจสอบ QA',
+      'กรุณากรอกชื่อผู้ตรวจรับ',
       false
     );
 
@@ -2083,7 +2090,7 @@ async function submitQaResult(approved) {
           if (approved) {
 
             showMessage(
-              'QA อนุมัติและปิดงานเรียบร้อยแล้ว',
+              'ผู้แจ้งตรวจรับและปิดงานเรียบร้อยแล้ว',
               true
             );
 

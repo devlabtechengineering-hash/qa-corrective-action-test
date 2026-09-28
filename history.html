@@ -7,8 +7,8 @@
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=33.1.0"></script>
-  <script src="navigation.js?v=33.2.1-logo1"></script>
+  <script src="supabase-api.js?v=34.0"></script>
+  <script src="navigation.js?v=34.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -199,7 +199,7 @@
       color: #1e40af;
     }
 
-    .status.WAITING_QA {
+    .status.WAITING_REVIEW {
       background: #ede9fe;
       color: #5b21b6;
     }
@@ -331,7 +331,7 @@
 
       <div class="field">
         <label for="department">
-          แผนกที่รับแจ้ง
+          แผนกผู้รับงาน
         </label>
         <select id="department">
           <option value="">
@@ -354,8 +354,8 @@
           <option value="IN_PROGRESS">
             IN PROGRESS
           </option>
-          <option value="WAITING_QA">
-            WAITING QA
+          <option value="WAITING_REVIEW">
+            WAITING REVIEW
           </option>
           <option value="REWORK">
             REWORK
@@ -719,7 +719,13 @@
 
         addMeta(
           meta,
-          'แผนกที่รับแจ้ง',
+          'แผนกผู้แจ้ง',
+          job.fromDepartment || '-'
+        );
+
+        addMeta(
+          meta,
+          'แผนกผู้รับงาน',
           job.toDepartment || '-'
         );
 
@@ -798,7 +804,7 @@
     title.textContent='สถานะเฉพาะรายการที่ค้นพบ · กดป้ายสีเพื่อกรอง';
     box.append(title);
 
-    const counts={OPEN:0,IN_PROGRESS:0,WAITING_QA:0,REWORK:0,CLOSED:0};
+    const counts={OPEN:0,IN_PROGRESS:0,WAITING_REVIEW:0,REWORK:0,CLOSED:0};
     for(const job of jobs){
       const code=QA.statusInfo(job.status).cssClass;
       counts[code]=(counts[code]||0)+1;

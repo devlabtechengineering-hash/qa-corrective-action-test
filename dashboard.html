@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA V33.1.0 navigation/status patch -->
+  <!-- QA V34.0 requester-review workflow -->
   <meta name="qa-page" content="dashboard">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=33.1.0"></script>
-  <script src="navigation.js?v=33.2.1-logo1"></script>
+  <script src="supabase-api.js?v=34.0"></script>
+  <script src="navigation.js?v=34.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -476,7 +476,7 @@
         Dashboard
       </h1>
       <p class="dashboard-subtitle">
-        สรุปใบแจ้งปัญหาแยกตามแผนกและสถานะ
+        สรุปใบงานตามแผนกผู้รับงานและสถานะ (รวม QA)
       </p>
     </div>
 
@@ -588,7 +588,7 @@
 
     <div class="summary-card">
       <div class="summary-label">
-        รอ QA ตรวจ
+        รอผู้แจ้งตรวจรับ
       </div>
       <div
         id="waitingJobs"
@@ -596,7 +596,7 @@
         -
       </div>
       <div class="summary-note">
-        WAITING QA
+        WAITING REVIEW
       </div>
     </div>
 
@@ -642,7 +642,7 @@
 
       <div class="legend-item">
         <span class="legend-dot c-waiting"></span>
-        WAITING QA
+        WAITING REVIEW
       </div>
 
       <div class="legend-item">
@@ -684,7 +684,7 @@
             <th>แผนก</th>
             <th>OPEN</th>
             <th>IN PROGRESS</th>
-            <th>WAITING QA</th>
+            <th>WAITING REVIEW</th>
             <th>REWORK</th>
             <th>CLOSED</th>
             <th>รวม</th>
@@ -718,7 +718,7 @@
     IN_PROGRESS: {
       className: 'c-progress'
     },
-    WAITING_QA: {
+    WAITING_REVIEW: {
       className: 'c-waiting'
     },
     REWORK: {
@@ -1012,7 +1012,7 @@
       'waitingJobs'
     ).textContent =
       numberText(
-        data.totals.WAITING_QA
+        data.totals.WAITING_REVIEW
       );
 
     document.getElementById(
@@ -1200,7 +1200,7 @@
           [
             'OPEN',
             'IN_PROGRESS',
-            'WAITING_QA',
+            'WAITING_REVIEW',
             'REWORK',
             'CLOSED'
           ].forEach(
@@ -1392,7 +1392,7 @@
 
         appendCell(
           tr,
-          dep.statusCounts.WAITING_QA || 0
+          dep.statusCounts.WAITING_REVIEW || 0
         );
 
         appendCell(
@@ -1441,7 +1441,7 @@
 
     appendCell(
       totalRow,
-      totals.WAITING_QA || 0
+      totals.WAITING_REVIEW || 0
     );
 
     appendCell(

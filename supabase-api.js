@@ -78,7 +78,7 @@
   const statusLabels=Object.freeze({
     OPEN:'เปิดงาน / รอรับงาน',
     IN_PROGRESS:'กำลังดำเนินการ',
-    WAITING_QA:'รอ QA ตรวจสอบ',
+    WAITING_REVIEW:'รอผู้แจ้งตรวจรับ',
     REWORK:'ส่งกลับแก้ไข',
     CLOSED:'ปิดงานแล้ว'
   });
@@ -101,7 +101,9 @@
     AUTH_REQUIRED: 'กรุณาเข้าสู่ระบบ',
     PROFILE_NOT_ACTIVE: 'บัญชีนี้ยังไม่มีสิทธิ์ (qa_profiles)',
     STALE_VERSION_REFRESH_REQUIRED: 'มีผู้แก้ไขใบงานแล้ว กรุณาโหลดใหม่ก่อนบันทึก',
-    QA_ROLE_REQUIRED: 'Only QA or admin can create/verify jobs.',
+    CREATE_ROLE_REQUIRED: 'บัญชี Viewer ไม่สามารถสร้างใบงานได้',
+    PROFILE_DEPARTMENT_REQUIRED: 'บัญชีนี้ยังไม่ได้กำหนดแผนกที่ใช้งาน',
+    REQUESTER_DEPARTMENT_ROLE_REQUIRED: 'เฉพาะแผนกผู้แจ้งหรือ Admin เท่านั้นที่ตรวจรับ/ปิดงานนี้ได้',
     ASSIGNED_DEPARTMENT_ROLE_REQUIRED: 'Only the assigned department or admin can accept/edit this job.',
     JOB_NOT_FOUND_OR_FORBIDDEN: 'Job not found, or your account cannot access it.',
     INVALID_OR_INACTIVE_SETTINGS: 'Select active department, category and priority values from Settings.',
@@ -222,27 +224,32 @@
   document.addEventListener('DOMContentLoaded',init);
   QA.applyPermissions=()=>{
     const p=QA.profile; if(!p) return;
-    for(const id of ['issuerName','qaInspector']) {
-      const el=document.getElementById(id);
-      if(el?.tagName==='INPUT') {el.value=p.display_name;el.defaultValue=p.display_name;el.readOnly=true;}
-    }
+    const issuer=document.getElementById('issuerName');
+    if(issuer?.tagName==='INPUT') {issuer.value=p.display_name;issuer.defaultValue=p.display_name;issuer.readOnly=true;}
+    const from=document.getElementById('fromDepartment');
+    if(from?.tagName==='INPUT') {from.value=p.department||'';from.defaultValue=p.department||'';from.readOnly=true;}
+    const reviewer=document.getElementById('qaInspector');
+    if(reviewer?.tagName==='INPUT') {reviewer.value=p.display_name;reviewer.defaultValue=p.display_name;reviewer.readOnly=true;}
     const form=document.getElementById('jobForm');
-    if(form && !['admin','qa'].includes(p.role)) {
+    if(form && (p.role==='viewer' || !String(p.department||'').trim())) {
       form.querySelectorAll('input,select,textarea,button').forEach(e=>e.disabled=true);
-      QA.notify('This account can view jobs, but only QA/admin can create a new notice. Use Job History or Dashboard.');
+      QA.notify(p.role==='viewer'
+        ? 'บัญชี Viewer ดูข้อมูลได้อย่างเดียว ไม่สามารถสร้างใบงานใหม่ได้'
+        : 'บัญชีนี้ยังไม่ได้กำหนดแผนกใน qa_profiles จึงยังสร้างใบงานไม่ได้');
     }
     const j=QA.currentJob; if(!j) return;
-    const canWork=p.role==='admin'||(p.role==='department'&&p.department===j.toDepartment);
-    const canQA=['admin','qa'].includes(p.role);
+    const isDeptActor=['qa','department'].includes(p.role);
+    const canWork=p.role==='admin'||(isDeptActor&&p.department===j.toDepartment);
+    const canReview=p.role==='admin'||(isDeptActor&&p.department===j.fromDepartment);
     if(!canWork) {
       const accept=document.getElementById('acceptCard');if(accept) accept.style.display='none';
       for(const id of ['assigneeName','targetDate','initialAction','preventiveAction','afterImageInput','saveBtn','submitQaBtn']) {
         const el=document.getElementById(id);if(el) el.disabled=true;
       }
     }
-    if(!canQA) {
+    if(!canReview) {
       const el=document.getElementById('qaCard');if(el) el.style.display='none';
-      const wait=document.getElementById('waitingCard');if(wait&&j.status==='WAITING_QA') wait.style.display='block';
+      const wait=document.getElementById('waitingCard');if(wait&&j.status==='WAITING_REVIEW') wait.style.display='block';
     }
   };
   function dateTime(v) {
@@ -329,10 +336,10 @@
         end=new Date(Date.UTC(period==='year'?y+1:y,period==='year'?0:m,1)-7*3600000);
       }
       const [settings,rows]=await Promise.all([api.getSettings(),rpc('qa_dashboard',{p_start:start.toISOString(),p_end:end.toISOString()})]);
-      const statuses=['OPEN','IN_PROGRESS','WAITING_QA','REWORK','CLOSED'];
+      const statuses=['OPEN','IN_PROGRESS','WAITING_REVIEW','REWORK','CLOSED'];
       const map=new Map();
       function add(code,name=code){if(!map.has(code))map.set(code,{code,name,displayName:name===code?code:code+' - '+name,statusCounts:Object.fromEntries(statuses.map(s=>[s,0])),other:0,total:0});return map.get(code);}
-      settings.departments.filter(x=>x.code.toUpperCase()!=='QA').forEach(x=>add(x.code,x.name));
+      settings.departments.forEach(x=>add(x.code,x.name));
       rows.forEach(x=>{const d=add(x.department);const n=Number(x.total);d.total+=n;if(statuses.includes(x.status))d.statusCounts[x.status]+=n;else d.other+=n;});
       const departments=[...map.values()],totals=Object.fromEntries([...statuses,'OTHER','TOTAL'].map(s=>[s,0]));
       departments.forEach(d=>{statuses.forEach(s=>totals[s]+=d.statusCounts[s]);totals.OTHER+=d.other;totals.TOTAL+=d.total;});
@@ -352,7 +359,7 @@
     if(file.name.length>255||String(item.description||'').length>1000) throw new Error('File name/description is too long.');
     return {file,fileName:file.name,mimeType:file.type,description:item.description||''};
   };
-  const pendingKey=()=>`qa-v33-pending:${new URL(cfg.supabaseUrl).hostname}:${QA.profile.user_id}`;
+  const pendingKey=()=>`qa-v34-pending:${new URL(cfg.supabaseUrl).hostname}:${QA.profile.user_id}`;
   function readPending(){try{return JSON.parse(sessionStorage.getItem(pendingKey())||'null');}catch{return null;}}
   function showRecovery(){
     QA.notify('A save has an unknown outcome. Do not re-enter it as a new job. Use Recover pending save.');

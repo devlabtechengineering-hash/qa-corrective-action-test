@@ -2,14 +2,14 @@
 <html lang="th">
 
 <head>
-  <!-- QA V33.1.0 navigation/status patch -->
+  <!-- QA V34.0 requester-review workflow -->
   <meta name="qa-page" content="create">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=33.1.0"></script>
-  <script src="navigation.js?v=33.2.1-logo1"></script>
+  <script src="supabase-api.js?v=34.0"></script>
+  <script src="navigation.js?v=34.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -229,11 +229,11 @@
 
   <div class="header-inner">
 
-    <h1>QA Corrective Action</h1>
+    <h1>Inter-Department Work Request</h1>
 
     <p>
-      ใบแจ้งปัญหาระหว่างแผนก
-      (Inter-Department Problem Notice)
+      ใบแจ้งงานระหว่างแผนก
+      (Inter-Department Work Request)
     </p>
 
   </div>
@@ -277,9 +277,10 @@
       <label>แผนกผู้แจ้ง</label>
 
       <input
+        id="fromDepartment"
         type="text"
-        value="QA"
-        disabled>
+        value=""
+        readonly>
 
     </div>
 
@@ -323,7 +324,7 @@
 <div class="card">
 
   <div class="section-title">
-    2. รายละเอียดปัญหาที่พบ
+    2. รายละเอียดงาน / ปัญหาที่พบ
   </div>
 
   <div class="grid">
@@ -454,7 +455,7 @@
       id="submitBtn"
       type="submit">
 
-      แจ้งปัญหา
+      แจ้งงาน
 
     </button>
 
@@ -792,7 +793,7 @@ document
 
               button.disabled = false;
               button.textContent =
-                'แจ้งปัญหา';
+                'แจ้งงาน';
 
               if (!result.success) {
 
@@ -834,7 +835,7 @@ document
               button.disabled = false;
 
               button.textContent =
-                'แจ้งปัญหา';
+                'แจ้งงาน';
 
               showMessage(
                 'เกิดข้อผิดพลาด: ' +
@@ -852,7 +853,7 @@ document
         button.disabled = false;
 
         button.textContent =
-          'แจ้งปัญหา';
+          'แจ้งงาน';
 
         showMessage(
           'ไม่สามารถอ่านรูปภาพได้: ' +

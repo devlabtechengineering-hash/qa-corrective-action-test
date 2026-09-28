@@ -73,7 +73,7 @@ function buildJobPdfHtml_(job, documentType, isFinal) {
             'ผู้แจ้งเรื่อง (Issuer)',
             job.issuerName,
             'สถานะงาน (Status)',
-            job.status
+            String(job.status || '').replace(/_/g, ' ')
           ]
         },
         {
@@ -153,7 +153,7 @@ function buildJobPdfHtml_(job, documentType, isFinal) {
             type: 'two',
             values: [
               'สถานะ',
-              'ยังไม่มีการส่งผลการแก้ไขให้ QA ตรวจ'
+              'ยังไม่มีการส่งผลการดำเนินการให้ผู้แจ้งตรวจรับ'
             ]
           }
         ]
@@ -200,7 +200,7 @@ function buildJobPdfHtml_(job, documentType, isFinal) {
               values: [
                 'ผู้รับผิดชอบ (Assignee)',
                 log.assigneeName,
-                'วันที่ส่ง QA',
+                'วันที่ส่งตรวจรับ',
                 log.dateTime
               ]
             }
@@ -218,7 +218,7 @@ function buildJobPdfHtml_(job, documentType, isFinal) {
       );
 
       let qaResult =
-        'รอ QA ตรวจ';
+        'รอผู้แจ้งตรวจรับ';
 
       if (
         String(log.result || '').toUpperCase() ===
@@ -238,22 +238,22 @@ function buildJobPdfHtml_(job, documentType, isFinal) {
 
       parts.push(
         pdfSectionTableHtml_(
-          'ผลตรวจ QA รอบที่ ' +
+          'ผลการตรวจรับ รอบที่ ' +
             log.roundNo,
           [
             {
               type: 'four',
               values: [
-                'ผลตรวจ QA',
+                'ผลตรวจรับ',
                 qaResult,
-                'ผู้ตรวจ QA',
+                'ผู้ตรวจรับ',
                 log.qaInspector || '-'
               ]
             },
             {
               type: 'two',
               values: [
-                'ข้อเสนอแนะ / ความเห็น QA',
+                'ข้อเสนอแนะ / ความเห็นผู้ตรวจรับ',
                 log.qaComment
               ]
             }
@@ -280,13 +280,13 @@ function buildJobPdfHtml_(job, documentType, isFinal) {
   const assigneeStatus =
     [
       'IN_PROGRESS',
-      'WAITING_QA',
+      'WAITING_REVIEW',
       'REWORK',
       'CLOSED'
     ].indexOf(
       String(job.status || '').toUpperCase()
     ) >= 0
-      ? job.status
+      ? String(job.status || '').replace(/_/g, ' ')
       : '-';
 
   parts.push(
@@ -307,7 +307,7 @@ function buildJobPdfHtml_(job, documentType, isFinal) {
           assigneeStatus
         ],
         [
-          'ผู้อนุมัติ/ปิดงาน (QA)',
+          'ผู้ตรวจรับ/ปิดงาน (Requester)',
           job.approvedBy || '-',
           job.closedDateTime || '-',
           isFinal ? 'CLOSED' : 'PENDING'
