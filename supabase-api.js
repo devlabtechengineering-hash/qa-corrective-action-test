@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const cfg = window.QA_CONFIG || {};
-  const QA = window.QA = {profile: null, client: null, version: '33.1.0'};
+  const QA = window.QA = {profile: null, client: null, version: '35.0'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -15,7 +15,7 @@
   // This works both at / and at /repository-name/ on GitHub Pages.
   const appBase = new URL('.', document.currentScript?.src || location.href);
   const pageFiles = Object.freeze({create:'index.html', index:'index.html',
-    job:'job.html', history:'history.html', dashboard:'dashboard.html', login:'login.html'});
+    job:'job.html', history:'history.html', dashboard:'dashboard.html', work:'work.html', settings:'settings.html', signup:'signup.html', reset:'reset-password.html', login:'login.html'});
   const pageName = input => {
     try {
       const u = new URL(input || location.href, appBase);
@@ -80,7 +80,8 @@
     IN_PROGRESS:'กำลังดำเนินการ',
     WAITING_REVIEW:'รอผู้แจ้งตรวจรับ',
     REWORK:'ส่งกลับแก้ไข',
-    CLOSED:'ปิดงานแล้ว'
+    CLOSED:'ปิดงานแล้ว',
+    CANCELLED:'ยกเลิกแล้ว'
   });
   QA.statusInfo = value => {
     const code=String(value || '').trim().toUpperCase();
@@ -96,14 +97,21 @@
     el.setAttribute('aria-label','สถานะ: '+el.textContent);
     el.title=el.textContent;
   };
-  const isLogin = pageName()==='login';
+  const currentPage = pageName();
+  const isLogin = currentPage==='login';
+  const isSignup = currentPage==='signup';
   const messageMap = {
     AUTH_REQUIRED: 'กรุณาเข้าสู่ระบบ',
-    PROFILE_NOT_ACTIVE: 'บัญชีนี้ยังไม่มีสิทธิ์ (qa_profiles)',
+    PROFILE_NOT_ACTIVE: 'บัญชีนี้ยังรอการอนุมัติ หรือถูกปิดการใช้งาน',
+    SYSTEM_ADMIN_REQUIRED: 'เมนูนี้สำหรับ System Admin เท่านั้น',
+    DEPARTMENT_ADMIN_REQUIRED: 'การทำรายการนี้ต้องเป็น Department Admin ของแผนกที่เกี่ยวข้อง',
+    REQUEST_OWNER_REQUIRED: 'เฉพาะผู้สร้างใบงานหรือ System Admin เท่านั้นที่แก้ไข/ยกเลิกได้',
+    JOB_ALREADY_ACCEPTED: 'ใบงานนี้ถูกรับงานแล้ว จึงแก้ไขหรือยกเลิกต้นฉบับไม่ได้',
     STALE_VERSION_REFRESH_REQUIRED: 'มีผู้แก้ไขใบงานแล้ว กรุณาโหลดใหม่ก่อนบันทึก',
     CREATE_ROLE_REQUIRED: 'บัญชี Viewer ไม่สามารถสร้างใบงานได้',
     PROFILE_DEPARTMENT_REQUIRED: 'บัญชีนี้ยังไม่ได้กำหนดแผนกที่ใช้งาน',
-    REQUESTER_DEPARTMENT_ROLE_REQUIRED: 'เฉพาะแผนกผู้แจ้งหรือ Admin เท่านั้นที่ตรวจรับ/ปิดงานนี้ได้',
+    REQUESTER_DEPARTMENT_ROLE_REQUIRED: 'เฉพาะ Department Admin ฝั่งผู้แจ้งหรือ System Admin เท่านั้นที่ตรวจรับ/ปิดงานนี้ได้',
+    REQUESTER_ADMIN_REQUIRED: 'เฉพาะ Department Admin ฝั่งผู้แจ้งหรือ System Admin เท่านั้นที่ตรวจรับ/ปิดงานนี้ได้',
     ASSIGNED_DEPARTMENT_ROLE_REQUIRED: 'Only the assigned department or admin can accept/edit this job.',
     JOB_NOT_FOUND_OR_FORBIDDEN: 'Job not found, or your account cannot access it.',
     INVALID_OR_INACTIVE_SETTINGS: 'Select active department, category and priority values from Settings.',
@@ -135,7 +143,7 @@
     try {
       if(!raw) return fallback;
       const u=new URL(raw,appBase),page=pageName(u.href);
-      if(u.username || u.password || !['create','job','history','dashboard'].includes(page)) return fallback;
+      if(u.username || u.password || !['create','job','history','dashboard','work','settings'].includes(page)) return fallback;
       const id=QA.jobIdFromUrl(u.href);
       if(page==='job' || (page==='create' && id)) return id?QA.jobUrl(id):QA.pageUrl('history');
       return QA.pageUrl(page,Object.fromEntries(u.searchParams));
@@ -146,8 +154,8 @@
     const page=pageName(),id=QA.jobIdFromUrl();
     let next;
     if(id && ['create','job'].includes(page)) next=QA.jobUrl(id);
-    else if(['create','history','dashboard'].includes(page)) next=QA.pageUrl(page,Object.fromEntries(new URLSearchParams(location.search)));
-    else next=QA.pageUrl('history');
+    else if(['create','history','dashboard','work','settings'].includes(page)) next=QA.pageUrl(page,Object.fromEntries(new URLSearchParams(location.search)));
+    else next=QA.pageUrl('work');
     return QA.pageUrl('login',{next});
   };
   function initClient() {
@@ -164,7 +172,7 @@
   async function readProfile(userId) {
     const {data,error}=await QA.client.from('qa_profiles').select('*').eq('user_id',userId).maybeSingle();
     if(error) throw error;
-    if(!data?.active) throw new Error('PROFILE_NOT_ACTIVE');
+    if(!data?.active || (data.approval_status && data.approval_status!=='APPROVED')) throw new Error('PROFILE_NOT_ACTIVE');
     return data;
   }
   QA.signOut=async()=>{
@@ -182,7 +190,7 @@
       const routePage=pageName(),incomingId=QA.jobIdFromUrl();
       if(actualPage && routePage && actualPage!==routePage) {
         throw new Error('HTML_PAGE_MISMATCH: '+location.pathname+
-          ' contains the '+actualPage+' page. Upload the matching V33.1.0 HTML file to GitHub.');
+          ' contains the '+actualPage+' page. Upload the matching V35.0 HTML file to GitHub.');
       }
       if(routePage==='create' && incomingId) {location.replace(QA.jobUrl(incomingId));return;}
       initClient();
@@ -201,9 +209,37 @@
             const profile=await readProfile(auth.user.id);
             document.getElementById('password').value='';
             location.replace(safeNext(new URLSearchParams(location.search).get('next'),
-              ['qa','admin'].includes(profile.role)?'create':'history'));
+              'work')); 
           } catch(err) {document.getElementById('loginError').textContent=errorOf(err).message;}
           finally {btn.disabled=false;}
+        });
+        const signupLink=document.getElementById('signupLink');
+        if(signupLink) signupLink.href=QA.pageUrl('signup');
+        readyResolve(); return;
+      }
+      if(isSignup) {
+        document.body.classList.remove('qa-auth-loading');
+        try {
+          const depts=await rpc('qa_public_departments',{});
+          const sel=document.getElementById('department');
+          for(const d of depts||[]){const o=document.createElement('option');o.value=d.code;o.textContent=d.name+' ('+d.code+')';sel.append(o);}
+        } catch(e){document.getElementById('signupError').textContent=errorOf(e).message;}
+        document.getElementById('signupForm').addEventListener('submit',async e=>{
+          e.preventDefault();const btn=document.getElementById('signupBtn');btn.disabled=true;
+          const box=document.getElementById('signupError');box.textContent='';
+          try{
+            const display_name=document.getElementById('displayName').value.trim();
+            const department=document.getElementById('department').value;
+            const email=document.getElementById('email').value.trim();
+            const password=document.getElementById('password').value;
+            const confirm=document.getElementById('confirmPassword').value;
+            if(password!==confirm) throw new Error('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
+            const {data:signup,error:err}=await QA.client.auth.signUp({email,password,options:{data:{qa_signup:'1',display_name,department}}});
+            if(err) throw err;
+            if(signup.session) await QA.client.auth.signOut({scope:'local'});
+            document.getElementById('signupForm').hidden=true;
+            document.getElementById('signupSuccess').hidden=false;
+          }catch(err){box.textContent=errorOf(err).message;}finally{btn.disabled=false;}
         });
         readyResolve(); return;
       }
@@ -238,9 +274,8 @@
         : 'บัญชีนี้ยังไม่ได้กำหนดแผนกใน qa_profiles จึงยังสร้างใบงานไม่ได้');
     }
     const j=QA.currentJob; if(!j) return;
-    const isDeptActor=['qa','department'].includes(p.role);
-    const canWork=p.role==='admin'||(isDeptActor&&p.department===j.toDepartment);
-    const canReview=p.role==='admin'||(isDeptActor&&p.department===j.fromDepartment);
+    const canWork=p.role==='system_admin'||(p.role==='department_admin'&&p.department===j.toDepartment);
+    const canReview=p.role==='system_admin'||(p.role==='department_admin'&&p.department===j.fromDepartment);
     if(!canWork) {
       const accept=document.getElementById('acceptCard');if(accept) accept.style.display='none';
       for(const id of ['assigneeName','targetDate','initialAction','preventiveAction','afterImageInput','saveBtn','submitQaBtn']) {
@@ -267,7 +302,8 @@
       downtimeMin:j.downtime_min,problemDetail:j.problem_detail,priority:j.priority,status:j.status,
       assigneeName:j.assignee_name,targetDate:j.target_date||'',initialAction:j.initial_action,preventiveAction:j.preventive_action,
       correctiveDateTime:dateTime(j.corrective_at),qaResult:j.qa_result,qaComment:j.qa_comment,approvedBy:j.approved_by,
-      closedDateTime:dateTime(j.closed_at),lastUpdate:dateTime(j.updated_at),version:j.version};
+      closedDateTime:dateTime(j.closed_at),lastUpdate:dateTime(j.updated_at),version:j.version,createdBy:j.created_by,
+      acceptedBy:j.accepted_by||'',acceptedAt:dateTime(j.accepted_at),cancelledAt:dateTime(j.cancelled_at),cancelReason:j.cancel_reason||''};
   }
   async function rpc(name,params) {const {data,error}=await QA.client.rpc(name,params);if(error) throw error;return data;}
   async function signedImages(rows) {
@@ -345,7 +381,14 @@
       departments.forEach(d=>{statuses.forEach(s=>totals[s]+=d.statusCounts[s]);totals.OTHER+=d.other;totals.TOTAL+=d.total;});
       return {success:true,period,selectedKey:key,selectedLabel:window.formatDashboardPeriodLabel_(period,key),generatedAt:dateTime(new Date()),statuses,departments,totals,matchedJobs:totals.TOTAL};
     },
+    async getWorklist(scope='mine'){const rows=await rpc('qa_worklist',{p_scope:scope,p_limit:200});return {success:true,jobs:(rows||[]).map(mapJob)};},
+    async getAdminUsers(){return await rpc('qa_admin_users',{});},
+    async updateAdminUser(data){return await rpc('qa_admin_update_user',{p_user_id:data.userId,p_display_name:data.displayName,p_role:data.role,p_department:data.department||'',p_active:!!data.active,p_approval_status:data.approvalStatus});},
+    async upsertSetting(data){return await rpc('qa_admin_upsert_setting',{p_type:data.type,p_code:data.code,p_name:data.name,p_sort_order:Number(data.sortOrder)||999,p_active:data.active!==false});},
+    async sendPasswordReset(email){const {error}=await QA.client.auth.resetPasswordForEmail(email,{redirectTo:QA.pageUrl('reset')});if(error)throw error;return {success:true};},
     createJob(data){return mutate('CREATE',null,data,data.files||[]);},
+    updateOpenJob(data){return mutate('UPDATE_OPEN',data.jobId,data,data.files||[]);},
+    cancelJob(jobId,reason=''){return mutate('CANCEL',jobId,{reason},[]);},
     acceptJob(jobId){return mutate('ACCEPT',jobId,{},[]);},
     saveCorrectiveAction(data){return mutate(data.submitToQA===true?'SUBMIT':'SAVE',data.jobId,data,data.files||[]);},
     saveQaVerification(data){return mutate('VERIFY',data.jobId,data,[]);},
@@ -359,7 +402,7 @@
     if(file.name.length>255||String(item.description||'').length>1000) throw new Error('File name/description is too long.');
     return {file,fileName:file.name,mimeType:file.type,description:item.description||''};
   };
-  const pendingKey=()=>`qa-v34-pending:${new URL(cfg.supabaseUrl).hostname}:${QA.profile.user_id}`;
+  const pendingKey=()=>`qa-v35-pending:${new URL(cfg.supabaseUrl).hostname}:${QA.profile.user_id}`;
   function readPending(){try{return JSON.parse(sessionStorage.getItem(pendingKey())||'null');}catch{return null;}}
   function showRecovery(){
     QA.notify('A save has an unknown outcome. Do not re-enter it as a new job. Use Recover pending save.');

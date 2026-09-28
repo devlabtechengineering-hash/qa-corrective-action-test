@@ -2,14 +2,14 @@
 <html lang="th">
 
 <head>
-  <!-- QA V34.0 requester-review workflow -->
+  <!-- QA V35.0 requester-review workflow -->
   <meta name="qa-page" content="create">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=34.0"></script>
-  <script src="navigation.js?v=34.0"></script>
+  <script src="supabase-api.js?v=35.0"></script>
+  <script src="navigation.js?v=35.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -470,15 +470,14 @@
 <script>
 
 let selectedFiles = [];
+let editJobId = new URLSearchParams(location.search).get('edit') || '';
+let editLoadedJob = null;
 
 /* =====================================================
    START
 ===================================================== */
 
-document.addEventListener(
-  'DOMContentLoaded',
-  loadSettings
-);
+document.addEventListener('DOMContentLoaded', loadSettings);
 
 /* =====================================================
    SETTINGS
@@ -508,14 +507,8 @@ function loadSettings() {
       const priority =
         document.getElementById('priority');
 
-      if (
-        [...priority.options]
-          .some(x => x.value === 'NORMAL')
-      ) {
-
-        priority.value = 'NORMAL';
-
-      }
+      if ([...priority.options].some(x => x.value === 'NORMAL')) priority.value = 'NORMAL';
+      if(editJobId) loadEditJob();
 
     })
 
@@ -846,7 +839,7 @@ document
             }
           )
 
-          .createJob(formData);
+          [editJobId ? 'updateOpenJob' : 'createJob'](editJobId ? {...formData, jobId:editJobId} : formData);
 
       } catch (error) {
 
@@ -865,6 +858,27 @@ document
 
     }
   );
+
+
+async function loadEditJob(){
+  try{
+    const result=await QA.api.getJob(editJobId,{track:true}); editLoadedJob=result.job;
+    if(editLoadedJob.status!=='OPEN') throw new Error('JOB_ALREADY_ACCEPTED');
+    if(QA.profile.role!=='system_admin' && editLoadedJob.createdBy!==QA.profile.user_id) throw new Error('REQUEST_OWNER_REQUIRED');
+    const j=editLoadedJob;
+    document.querySelector('h1').textContent='แก้ไขใบแจ้ง '+j.jobId;
+    document.getElementById('submitBtn').textContent='บันทึกการแก้ไข';
+    document.getElementById('toDepartment').value=j.toDepartment;
+    document.getElementById('serialNo').value=j.serialNo||'';
+    document.getElementById('category').value=j.category;
+    document.getElementById('priority').value=j.priority;
+    document.getElementById('impact').value=j.impact||'';
+    document.getElementById('location').value=j.location||'';
+    document.getElementById('downtimeMin').value=j.downtimeMin??'';
+    document.getElementById('problemDetail').value=j.problemDetail||'';
+    showMessage('แก้ไขได้เฉพาะตอนที่งานยังเป็น OPEN และผู้รับยังไม่กดรับงาน รูปเดิมจะคงอยู่ สามารถเพิ่มรูปใหม่ได้',true);
+  }catch(e){showMessage(QA.errorOf(e).message,false);document.getElementById('submitBtn').disabled=true;}
+}
 
 /* =====================================================
    MESSAGE

@@ -9,8 +9,8 @@
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=34.0"></script>
-  <script src="navigation.js?v=34.0"></script>
+  <script src="supabase-api.js?v=35.0"></script>
+  <script src="navigation.js?v=35.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -110,6 +110,10 @@
     .status.WAITING_REVIEW {
       background: #ede9fe;
       color: #5b21b6;
+    }
+
+    .status.CANCELLED {
+      background:#e5e7eb; color:#374151;
     }
 
     .status.REWORK {
@@ -510,6 +514,9 @@
 
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <span id="statusDisplay" class="status" role="status" aria-live="polite"></span>
+
+          <button id="editRequestBtn" type="button" style="display:none;background:#0f766e;color:white;padding:9px 14px;" onclick="editRequest()">แก้ไขใบแจ้ง</button>
+          <button id="cancelRequestBtn" type="button" style="display:none;background:#b91c1c;color:white;padding:9px 14px;" onclick="cancelRequest()">ยกเลิกใบงาน</button>
 
           <button
             id="exportPdfBtn"
@@ -989,6 +996,7 @@
       );
 
     QA.setStatusBadge(status, currentJob.status);
+    updateOwnerActions();
     document.title = currentJob.jobId + ' | ' + QA.statusInfo(currentJob.status).label + ' | Work Request';
 
     document.getElementById(
@@ -1041,7 +1049,7 @@ renderCorrectiveHistory(
     const j = job && typeof job === 'object' ? job : {};
     const p = profile && typeof profile === 'object' ? profile : {};
     const rawStatus = String(j.status || '').trim().toUpperCase();
-    const stages = {OPEN:0, IN_PROGRESS:1, WAITING_REVIEW:2, REWORK:1, CLOSED:3};
+    const stages = {OPEN:0, IN_PROGRESS:1, WAITING_REVIEW:2, REWORK:1, CLOSED:3, CANCELLED:0};
     const known = Object.prototype.hasOwnProperty.call(stages, rawStatus);
     const status = known ? rawStatus : 'UNKNOWN';
     const stage = known ? stages[status] : -1;
@@ -1049,9 +1057,8 @@ renderCorrectiveHistory(
     const sourceDepartment = String(j.fromDepartment || '').trim();
     const destination = department ? 'แผนก ' + department : 'แผนกผู้รับงาน';
     const requester = sourceDepartment ? 'แผนก ' + sourceDepartment : 'แผนกผู้แจ้ง';
-    const isDeptActor = ['qa','department'].includes(p.role);
-    const canWork = p.role === 'admin' || (isDeptActor && department !== '' && p.department === department);
-    const canVerify = p.role === 'admin' || (isDeptActor && sourceDepartment !== '' && p.department === sourceDepartment);
+    const canWork = p.role === 'system_admin' || (p.role === 'department_admin' && department !== '' && p.department === department);
+    const canVerify = p.role === 'system_admin' || (p.role === 'department_admin' && sourceDepartment !== '' && p.department === sourceDepartment);
     const logs = (Array.isArray(j.correctiveLogs) ? j.correctiveLogs : []).filter(
       log => log && typeof log === 'object'
     );
@@ -1143,7 +1150,7 @@ renderCorrectiveHistory(
       showReturn:afterReject,
       returnTitle:status === 'REWORK' ? 'ผู้แจ้งส่งกลับแก้ไข — กลับมาที่ขั้นดำเนินการ' : 'กำลังดำเนินการต่อจากรอบที่ผู้แจ้งส่งกลับ',
       returnText:rejectComment || 'ดูเหตุผลจากผู้แจ้งในประวัติรอบการแก้ไขด้านล่าง',
-      animate:known && status !== 'CLOSED'};
+      animate:known && !['CLOSED','CANCELLED'].includes(status)};
   }
 
   function jobProgressIcon(index, done, rework) {
@@ -1226,6 +1233,20 @@ renderCorrectiveHistory(
   }
 
 
+  function updateOwnerActions(){
+    const own=currentJob && (QA.profile.role==='system_admin' || currentJob.createdBy===QA.profile.user_id);
+    const allow=own && currentJob.status==='OPEN';
+    const e=document.getElementById('editRequestBtn'),c=document.getElementById('cancelRequestBtn');
+    if(e)e.style.display=allow?'inline-block':'none'; if(c)c.style.display=allow?'inline-block':'none';
+  }
+  function editRequest(){ if(currentJob?.status==='OPEN') location.assign(QA.pageUrl('create',{edit:currentJob.jobId})); }
+  async function cancelRequest(){
+    if(!currentJob||currentJob.status!=='OPEN')return;
+    const reason=prompt('เหตุผลที่ยกเลิก (ไม่บังคับ)')??null;if(reason===null)return;
+    if(!confirm('ยืนยันยกเลิก '+currentJob.jobId+' ? หลังยกเลิกจะไม่สามารถรับงานต่อได้'))return;
+    try{const r=await QA.api.cancelJob(currentJob.jobId,reason);showMessage('ยกเลิกใบงานแล้ว',true);await loadJob();}catch(e){showMessage(QA.errorOf(e).message,false)}
+  }
+
   function updateStatusView() {
 
     hide('acceptCard');
@@ -1290,6 +1311,11 @@ renderCorrectiveHistory(
       hide('correctiveCard');
 
       show('qaCard');
+    }
+
+    else if (status === 'CANCELLED') {
+      show('closedCard');
+      const cc=document.getElementById('closedCard'); if(cc) cc.querySelector('.section-title').textContent='ยกเลิกใบงาน / CANCELLED';
     }
 
     else if (status === 'CLOSED') {
