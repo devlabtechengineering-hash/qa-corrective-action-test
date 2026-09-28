@@ -296,6 +296,19 @@
     const get=t=>p.find(x=>x.type===t).value;return `${get('year')}-${get('month')}-${get('day')}`;
   }
   QA.bangkokDateKey=keyOf;
+  function formatDashboardPeriodLabel(period,key) {
+    if(period==='day') {
+      const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key||''));
+      return m ? `${m[3]}/${m[2]}/${m[1]}` : String(key||'');
+    }
+    if(period==='month') {
+      const m=/^(\d{4})-(\d{2})$/.exec(String(key||''));
+      if(!m) return String(key||'');
+      const d=new Date(`${m[1]}-${m[2]}-01T00:00:00+07:00`);
+      return new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',month:'long',year:'numeric'}).format(d);
+    }
+    return String(key||'');
+  }
   function mapJob(j) {
     return {jobId:j.job_id,serialNo:j.serial_no,createdDateTime:dateTime(j.created_at),issuerName:j.issuer_name,
       fromDepartment:j.from_department,toDepartment:j.to_department,category:j.category,impact:j.impact,location:j.location,
@@ -372,16 +385,16 @@
         end=new Date(Date.UTC(period==='year'?y+1:y,period==='year'?0:m,1)-7*3600000);
       }
       const [settings,rows]=await Promise.all([api.getSettings(),rpc('qa_dashboard',{p_start:start.toISOString(),p_end:end.toISOString()})]);
-      const statuses=['OPEN','IN_PROGRESS','WAITING_REVIEW','REWORK','CLOSED'];
+      const statuses=['OPEN','IN_PROGRESS','WAITING_REVIEW','REWORK','CLOSED','CANCELLED'];
       const map=new Map();
       function add(code,name=code){if(!map.has(code))map.set(code,{code,name,displayName:name===code?code:code+' - '+name,statusCounts:Object.fromEntries(statuses.map(s=>[s,0])),other:0,total:0});return map.get(code);}
       settings.departments.forEach(x=>add(x.code,x.name));
       rows.forEach(x=>{const d=add(x.department);const n=Number(x.total);d.total+=n;if(statuses.includes(x.status))d.statusCounts[x.status]+=n;else d.other+=n;});
       const departments=[...map.values()],totals=Object.fromEntries([...statuses,'OTHER','TOTAL'].map(s=>[s,0]));
       departments.forEach(d=>{statuses.forEach(s=>totals[s]+=d.statusCounts[s]);totals.OTHER+=d.other;totals.TOTAL+=d.total;});
-      return {success:true,period,selectedKey:key,selectedLabel:window.formatDashboardPeriodLabel_(period,key),generatedAt:dateTime(new Date()),statuses,departments,totals,matchedJobs:totals.TOTAL};
+      return {success:true,period,selectedKey:key,selectedLabel:formatDashboardPeriodLabel(period,key),generatedAt:dateTime(new Date()),statuses,departments,totals,matchedJobs:totals.TOTAL};
     },
-    async getWorklist(scope='mine'){const rows=await rpc('qa_worklist',{p_scope:scope,p_limit:200});return {success:true,jobs:(rows||[]).map(mapJob)};},
+    async getWorklist(scope='mine',query=''){const q=String(query||'').trim();const rows=q?await rpc('qa_worklist_search',{p_scope:scope,p_query:q,p_limit:200}):await rpc('qa_worklist',{p_scope:scope,p_limit:200});return {success:true,jobs:(rows||[]).map(mapJob)};},
     async getAdminUsers(){return await rpc('qa_admin_users',{});},
     async updateAdminUser(data){return await rpc('qa_admin_update_user',{p_user_id:data.userId,p_display_name:data.displayName,p_role:data.role,p_department:data.department||'',p_active:!!data.active,p_approval_status:data.approvalStatus});},
     async upsertSetting(data){return await rpc('qa_admin_upsert_setting',{p_type:data.type,p_code:data.code,p_name:data.name,p_sort_order:Number(data.sortOrder)||999,p_active:data.active!==false});},

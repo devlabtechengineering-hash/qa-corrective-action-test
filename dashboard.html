@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA V35.0 requester-review workflow -->
+  <!-- QA V35.1 requester-review workflow -->
   <meta name="qa-page" content="dashboard">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=35.0"></script>
-  <script src="navigation.js?v=35.0"></script>
+  <script src="supabase-api.js?v=35.1"></script>
+  <script src="navigation.js?v=35.1"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -216,6 +216,7 @@
     .c-waiting { background: #8b5cf6; }
     .c-rework { background: #ef4444; }
     .c-closed { background: #22c55e; }
+    .c-cancelled { background: #9ca3af; }
 
     .chart-scroll {
       overflow-x: auto;
@@ -654,6 +655,11 @@
         <span class="legend-dot c-closed"></span>
         CLOSED
       </div>
+
+      <div class="legend-item">
+        <span class="legend-dot c-cancelled"></span>
+        CANCELLED
+      </div>
     </div>
 
     <div id="chartArea">
@@ -687,6 +693,7 @@
             <th>WAITING REVIEW</th>
             <th>REWORK</th>
             <th>CLOSED</th>
+            <th>CANCELLED</th>
             <th>รวม</th>
           </tr>
         </thead>
@@ -694,7 +701,7 @@
         <tbody id="summaryBody">
           <tr>
             <td
-              colspan="7"
+              colspan="8"
               class="loading">
               กำลังโหลด...
             </td>
@@ -726,6 +733,9 @@
     },
     CLOSED: {
       className: 'c-closed'
+    },
+    CANCELLED: {
+      className: 'c-cancelled'
     }
   };
 
@@ -951,7 +961,7 @@
     document.getElementById(
       'summaryBody'
     ).innerHTML =
-      '<tr><td colspan="7" class="loading">กำลังโหลด...</td></tr>';
+      '<tr><td colspan="8" class="loading">กำลังโหลด...</td></tr>';
 
     QA.run
 
@@ -1202,7 +1212,8 @@
             'IN_PROGRESS',
             'WAITING_REVIEW',
             'REWORK',
-            'CLOSED'
+            'CLOSED',
+            'CANCELLED'
           ].forEach(
             function(status) {
               const count =
@@ -1407,6 +1418,11 @@
 
         appendCell(
           tr,
+          dep.statusCounts.CANCELLED || 0
+        );
+
+        appendCell(
+          tr,
           dep.total || 0
         );
 
@@ -1452,6 +1468,11 @@
     appendCell(
       totalRow,
       totals.CLOSED || 0
+    );
+
+    appendCell(
+      totalRow,
+      totals.CANCELLED || 0
     );
 
     appendCell(
@@ -1503,7 +1524,7 @@
     document.getElementById(
       'summaryBody'
     ).innerHTML =
-      '<tr><td colspan="7" class="error"></td></tr>';
+      '<tr><td colspan="8" class="error"></td></tr>';
 
     document
       .querySelector(

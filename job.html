@@ -9,8 +9,8 @@
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=35.0"></script>
-  <script src="navigation.js?v=35.0"></script>
+  <script src="supabase-api.js?v=35.1"></script>
+  <script src="navigation.js?v=35.1"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -919,7 +919,7 @@
 
       if (!JOB_ID) {
 
-        showJobLoadError('ไม่พบหมายเลขใบงานในลิงก์ กรุณาเลือกจากหน้าค้นหาใบงาน');
+        showJobLoadError('ไม่พบหมายเลขใบงานในลิงก์ กรุณาเลือกจากหน้าใบงาน');
 
         return;
       }
@@ -934,7 +934,7 @@
     document.getElementById('mainContent').style.display='none';
     const text=document.createElement('p');text.textContent=message;box.append(text);
     const link=document.createElement('a');link.href=QA.pageUrl('history');
-    link.textContent='กลับไปค้นหาใบงาน';
+    link.textContent='กลับไปหน้าใบงาน';
     box.append(link);
   }
 
