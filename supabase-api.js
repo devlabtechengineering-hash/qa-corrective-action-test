@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const cfg = window.QA_CONFIG || {};
-  const QA = window.QA = {profile: null, client: null, version: '35.0'};
+  const QA = window.QA = {profile: null, client: null, version: '35.2.1'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -197,6 +197,9 @@
       const {data,error}=await QA.client.auth.getSession(); if(error) throw error;
       if(isLogin) {
         document.body.classList.remove('qa-auth-loading');
+        const loginParams=new URLSearchParams(location.search);
+        const confirmedNote=document.getElementById('emailConfirmedNote');
+        if(confirmedNote && loginParams.get('confirmed')==='1') confirmedNote.hidden=false;
         const form=document.getElementById('loginForm');
         form.addEventListener('submit',async e=>{
           e.preventDefault();const btn=document.getElementById('loginBtn');btn.disabled=true;
@@ -234,7 +237,7 @@
             const password=document.getElementById('password').value;
             const confirm=document.getElementById('confirmPassword').value;
             if(password!==confirm) throw new Error('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
-            const {data:signup,error:err}=await QA.client.auth.signUp({email,password,options:{data:{qa_signup:'1',display_name,department}}});
+            const {data:signup,error:err}=await QA.client.auth.signUp({email,password,options:{emailRedirectTo:QA.pageUrl('login',{confirmed:'1'}),data:{qa_signup:'1',display_name,department}}});
             if(err) throw err;
             if(signup.session) await QA.client.auth.signOut({scope:'local'});
             document.getElementById('signupForm').hidden=true;
