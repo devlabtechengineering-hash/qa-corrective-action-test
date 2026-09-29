@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const cfg = window.QA_CONFIG || {};
-  const QA = window.QA = {profile: null, client: null, version: '35.2.1'};
+  const QA = window.QA = {profile: null, client: null, version: '35.2.2'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -239,9 +239,15 @@
             if(password!==confirm) throw new Error('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
             const {data:signup,error:err}=await QA.client.auth.signUp({email,password,options:{emailRedirectTo:QA.pageUrl('login',{confirmed:'1'}),data:{qa_signup:'1',display_name,department}}});
             if(err) throw err;
-            if(signup.session) await QA.client.auth.signOut({scope:'local'});
             document.getElementById('signupForm').hidden=true;
-            document.getElementById('signupSuccess').hidden=false;
+            const success=document.getElementById('signupSuccess');
+            success.hidden=false;
+            if(signup.session){
+              success.innerHTML='<b>สมัครสมาชิกสำเร็จ</b><br>บัญชีพร้อมใช้งานแล้ว กำลังเข้าสู่ระบบ...';
+              setTimeout(()=>location.replace(QA.pageUrl('work')),600);
+            }else{
+              success.innerHTML='<b>สมัครสมาชิกสำเร็จ</b><br>ระบบกำลังรอการยืนยันอีเมล กรุณาตรวจ Inbox แล้วกดลิงก์ยืนยันก่อนเข้าสู่ระบบ<br><br><a href="'+QA.pageUrl('login')+'">กลับหน้า Login</a>';
+            }
           }catch(err){box.textContent=errorOf(err).message;}finally{btn.disabled=false;}
         });
         readyResolve(); return;
