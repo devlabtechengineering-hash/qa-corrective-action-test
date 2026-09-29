@@ -5,7 +5,7 @@
 (() => {
   'use strict';
   const cfg = window.QA_CONFIG || {};
-  const QA = window.QA = {profile: null, client: null, version: '35.2.2'};
+  const QA = window.QA = {profile: null, client: null, version: '35.3'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -15,7 +15,7 @@
   // This works both at / and at /repository-name/ on GitHub Pages.
   const appBase = new URL('.', document.currentScript?.src || location.href);
   const pageFiles = Object.freeze({create:'index.html', index:'index.html',
-    job:'job.html', history:'history.html', dashboard:'dashboard.html', work:'work.html', settings:'settings.html', signup:'signup.html', reset:'reset-password.html', login:'login.html'});
+    job:'job.html', history:'history.html', dashboard:'dashboard.html', work:'work.html', settings:'settings.html', signup:'signup.html', reset:'reset-password.html', forcePassword:'force-password.html', login:'login.html'});
   const pageName = input => {
     try {
       const u = new URL(input || location.href, appBase);
@@ -211,8 +211,12 @@
             if(err) throw err;
             const profile=await readProfile(auth.user.id);
             document.getElementById('password').value='';
-            location.replace(safeNext(new URLSearchParams(location.search).get('next'),
-              'work')); 
+            if(profile.must_change_password){
+              location.replace(QA.pageUrl('forcePassword'));
+            }else{
+              location.replace(safeNext(new URLSearchParams(location.search).get('next'),
+                'work'));
+            }
           } catch(err) {document.getElementById('loginError').textContent=errorOf(err).message;}
           finally {btn.disabled=false;}
         });
@@ -254,6 +258,10 @@
       }
       if(!data.session) {location.replace(QA.loginUrl());return;}
       QA.profile=await readProfile(data.session.user.id);
+      if(QA.profile.must_change_password && currentPage!=='forcePassword'){
+        location.replace(QA.pageUrl('forcePassword'));
+        return;
+      }
       window.mountQaNavigation?.();
       document.body.classList.remove('qa-auth-loading');
       QA.applyPermissions();
@@ -407,7 +415,27 @@
     async getAdminUsers(){return await rpc('qa_admin_users',{});},
     async updateAdminUser(data){return await rpc('qa_admin_update_user',{p_user_id:data.userId,p_display_name:data.displayName,p_role:data.role,p_department:data.department||'',p_active:!!data.active,p_approval_status:data.approvalStatus});},
     async upsertSetting(data){return await rpc('qa_admin_upsert_setting',{p_type:data.type,p_code:data.code,p_name:data.name,p_sort_order:Number(data.sortOrder)||999,p_active:data.active!==false});},
-    async sendPasswordReset(email){const {error}=await QA.client.auth.resetPasswordForEmail(email,{redirectTo:QA.pageUrl('reset')});if(error)throw error;return {success:true};},
+    async adminSetTemporaryPassword(userId,tempPassword){
+      const password=String(tempPassword||'');
+      if(password.length<8) throw new Error('รหัสผ่านชั่วคราวต้องมีอย่างน้อย 8 ตัวอักษร');
+      const {data,error}=await QA.client.functions.invoke('admin-reset-password',{body:{userId,tempPassword:password}});
+      if(error){
+        let message=error.message||'เรียก Admin password reset ไม่สำเร็จ';
+        try{const detail=await error.context?.json?.();if(detail?.message)message=detail.message;}catch{}
+        throw new Error(message);
+      }
+      if(!data?.success) throw new Error(data?.message||'ตั้งรหัสผ่านชั่วคราวไม่สำเร็จ');
+      return data;
+    },
+    async changeForcedPassword(newPassword){
+      const password=String(newPassword||'');
+      if(password.length<8) throw new Error('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร');
+      const {error}=await QA.client.auth.updateUser({password});
+      if(error) throw error;
+      await rpc('qa_clear_must_change_password',{});
+      if(QA.profile) QA.profile.must_change_password=false;
+      return {success:true};
+    },
     createJob(data){return mutate('CREATE',null,data,data.files||[]);},
     updateOpenJob(data){return mutate('UPDATE_OPEN',data.jobId,data,data.files||[]);},
     cancelJob(jobId,reason=''){return mutate('CANCEL',jobId,{reason},[]);},
