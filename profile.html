@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta name="qa-page" content="profile">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Profile</title>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-api.js?v=36.1"></script>
+  <script src="navigation.js?v=36.1"></script>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:Arial,Tahoma,sans-serif;background:#f4f6f8;color:#1f2937}
+    .page{max-width:820px;margin:auto;padding:30px 20px}.head{margin-bottom:18px}.head h1{margin:0 0 6px}.muted{color:#64748b}
+    .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:22px;margin-bottom:16px;box-shadow:0 4px 14px rgba(15,23,42,.04)}
+    .row{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #f1f5f9}.row:last-child{border-bottom:0}.label{font-weight:800;color:#475569}
+    .line-box{margin-top:14px;padding:16px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc}.code{font-size:32px;font-weight:900;letter-spacing:5px;margin:8px 0}.hidden{display:none}
+    button{border:0;border-radius:9px;background:#111827;color:#fff;padding:11px 16px;font-weight:800;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}.copy{background:#475569;margin-left:6px}
+    .note{font-size:14px;line-height:1.7;color:#475569}.error{color:#b91c1c;margin-top:10px;white-space:pre-wrap}.success{color:#166534;margin-top:10px}
+    @media(max-width:600px){.page{padding:22px 14px}.row{grid-template-columns:1fr;gap:3px}.code{font-size:27px}}
+  </style>
+</head>
+<body class="qa-auth-loading">
+<main class="page">
+  <div class="head"><h1>Profile</h1><div class="muted">ข้อมูลบัญชีและการเชื่อมต่อ LINE</div></div>
+
+  <section class="card">
+    <div class="row"><div class="label">ชื่อ</div><div id="displayName">-</div></div>
+    <div class="row"><div class="label">Role</div><div id="role">-</div></div>
+    <div class="row"><div class="label">Department</div><div id="department">-</div></div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin-top:0">LINE Notification</h2>
+    <p class="note">ใช้สำหรับรับการแจ้งเตือนจาก Complain Bot เท่านั้น การ Login เข้าเว็บยังใช้ Email + Password เหมือนเดิม</p>
+    <button id="createCodeBtn" type="button">สร้างรหัสเชื่อมต่อ LINE</button>
+    <div id="error" class="error"></div>
+
+    <div id="linkBox" class="line-box hidden">
+      <div class="note">ส่งข้อความนี้หา <b>Complain Bot</b> ในแชทส่วนตัวภายใน 10 นาที:</div>
+      <div id="linkCommand" class="code">LINK ------</div>
+      <button id="copyBtn" class="copy" type="button">คัดลอกคำสั่ง</button>
+      <div class="note" style="margin-top:12px">เมื่อ Bot ตอบว่า “เชื่อมต่อ LINE สำเร็จ” แสดงว่าเสร็จแล้ว</div>
+    </div>
+  </section>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded',()=>setTimeout(initProfilePage,0));
+function waitQA(){return new Promise((res,rej)=>{let n=0;const t=setInterval(()=>{if(QA.profile){clearInterval(t);res()}else if(++n>100){clearInterval(t);rej(new Error('Profile load timeout'))}},50)})}
+async function initProfilePage(){
+  await waitQA();
+  const p=QA.profile||{};
+  document.getElementById('displayName').textContent=p.display_name||'-';
+  document.getElementById('role').textContent=String(p.role||'-').replaceAll('_',' ');
+  document.getElementById('department').textContent=p.department||'ไม่สังกัดแผนก';
+  document.getElementById('createCodeBtn').onclick=createLinkCode;
+  document.getElementById('copyBtn').onclick=copyCommand;
+}
+async function createLinkCode(){
+  const btn=document.getElementById('createCodeBtn'),err=document.getElementById('error');
+  btn.disabled=true;err.textContent='';
+  try{
+    const {data,error}=await QA.client.rpc('qa_create_line_link_code');
+    if(error) throw error;
+    const code=String(data||'').trim();
+    if(!/^\d{6}$/.test(code)) throw new Error('ไม่สามารถสร้างรหัสเชื่อมต่อ LINE ได้');
+    document.getElementById('linkCommand').textContent='LINK '+code;
+    document.getElementById('linkBox').classList.remove('hidden');
+  }catch(e){err.textContent=QA.errorOf(e).message}
+  finally{btn.disabled=false}
+}
+async function copyCommand(){
+  const text=document.getElementById('linkCommand').textContent.trim();
+  try{await navigator.clipboard.writeText(text);document.getElementById('copyBtn').textContent='คัดลอกแล้ว'}
+  catch{document.getElementById('copyBtn').textContent='คัดลอกไม่สำเร็จ'}
+  setTimeout(()=>document.getElementById('copyBtn').textContent='คัดลอกคำสั่ง',1500);
+}
+</script>
+</body>
+</html>
