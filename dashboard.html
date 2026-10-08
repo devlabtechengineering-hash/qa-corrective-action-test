@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA V35.1 requester-review workflow -->
+  <!-- QA V37.0 requester-review workflow -->
   <meta name="qa-page" content="dashboard">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=35.3"></script>
-  <script src="navigation.js?v=35.2"></script>
+  <script src="supabase-api.js?v=37.0"></script>
+  <script src="navigation.js?v=37.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -757,7 +757,7 @@
 
     const period =
       params.get('period') ||
-      'day';
+      'month';
 
     document.getElementById(
       'period'
@@ -765,7 +765,7 @@
       ['day','month','year']
         .indexOf(period) >= 0
           ? period
-          : 'day';
+          : 'month';
 
     document.getElementById(
       'dayInput'

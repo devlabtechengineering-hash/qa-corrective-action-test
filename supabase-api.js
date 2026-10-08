@@ -1,11 +1,11 @@
-/* QA V33.1.0 navigation/status patch (2026-09-24).
+/* QA V37.0 navigation/status patch (2026-09-24).
    QA V33 adapter. No Apps Script runtime is required.
    Original callback-shaped calls are preserved as QA.run; the implementation is Supabase.
    Mutation permissions and transitions are enforced in SQL, not by these UI checks. */
 (() => {
   'use strict';
   const cfg = window.QA_CONFIG || {};
-  const QA = window.QA = {profile: null, client: null, version: '35.3'};
+  const QA = window.QA = {profile: null, client: null, version: '37.0'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -138,7 +138,7 @@
     document.querySelectorAll('form input,form select,form textarea,form button').forEach(el=>el.disabled=true);
     if(QA.client){const out=document.createElement('button');out.type='button';out.textContent='Sign out / Login';out.onclick=()=>QA.signOut();document.getElementById('qa-system-note').append(out);}
   }
-  function safeNext(raw, defaultPage='create') {
+  function safeNext(raw, defaultPage='work') {
     const fallback=QA.pageUrl(defaultPage);
     try {
       if(!raw) return fallback;
@@ -166,7 +166,7 @@
     if(!/^sb_publishable_/.test(cfg.publishableKey||'') || cfg.publishableKey.includes('REPLACE'))
       throw new Error('Edit publishableKey in config.js. Only sb_publishable_ keys are accepted.');
     QA.client=window.supabase.createClient(cfg.supabaseUrl,cfg.publishableKey,{
-      auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}
+      auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:false}
     });
   }
   async function readProfile(userId) {
@@ -190,7 +190,7 @@
       const routePage=pageName(),incomingId=QA.jobIdFromUrl();
       if(actualPage && routePage && actualPage!==routePage) {
         throw new Error('HTML_PAGE_MISMATCH: '+location.pathname+
-          ' contains the '+actualPage+' page. Upload the matching V35.0 HTML file to GitHub.');
+          ' contains the '+actualPage+' page. Upload the matching V37.0 HTML file to GitHub.');
       }
       if(routePage==='create' && incomingId) {location.replace(QA.jobUrl(incomingId));return;}
       initClient();
@@ -214,8 +214,7 @@
             if(profile.must_change_password){
               location.replace(QA.pageUrl('forcePassword'));
             }else{
-              location.replace(safeNext(new URLSearchParams(location.search).get('next'),
-                'work'));
+              location.replace(QA.pageUrl('work'));
             }
           } catch(err) {document.getElementById('loginError').textContent=errorOf(err).message;}
           finally {btn.disabled=false;}
@@ -229,7 +228,7 @@
         try {
           const depts=await rpc('qa_public_departments',{});
           const sel=document.getElementById('department');
-          for(const d of depts||[]){const o=document.createElement('option');o.value=d.code;o.textContent=d.name+' ('+d.code+')';sel.append(o);}
+          for(const d of depts||[]){const o=document.createElement('option');o.value=d.code;o.textContent=d.code;sel.append(o);}
         } catch(e){document.getElementById('signupError').textContent=errorOf(e).message;}
         document.getElementById('signupForm').addEventListener('submit',async e=>{
           e.preventDefault();const btn=document.getElementById('signupBtn');btn.disabled=true;
@@ -333,7 +332,7 @@
       assigneeName:j.assignee_name,targetDate:j.target_date||'',initialAction:j.initial_action,preventiveAction:j.preventive_action,
       correctiveDateTime:dateTime(j.corrective_at),qaResult:j.qa_result,qaComment:j.qa_comment,approvedBy:j.approved_by,
       closedDateTime:dateTime(j.closed_at),lastUpdate:dateTime(j.updated_at),version:j.version,createdBy:j.created_by,
-      acceptedBy:j.accepted_by||'',acceptedAt:dateTime(j.accepted_at),cancelledAt:dateTime(j.cancelled_at),cancelReason:j.cancel_reason||''};
+      acceptedBy:j.accepted_by||'',acceptedAt:dateTime(j.accepted_at),acceptanceComment:j.acceptance_comment||'',acceptanceSignedName:j.acceptance_signed_name||'',cancelledAt:dateTime(j.cancelled_at),cancelReason:j.cancel_reason||''};
   }
   async function rpc(name,params) {const {data,error}=await QA.client.rpc(name,params);if(error) throw error;return data;}
   async function signedImages(rows) {
@@ -386,7 +385,7 @@
       return {success:true,jobs,total:jobs.length};
     },
     async getDashboardData(filters={}) {
-      const period=['day','month','year'].includes(filters.period)?filters.period:'day';
+      const period=['day','month','year'].includes(filters.period)?filters.period:'month';
       const today=keyOf();
       const key=String(period==='day'?(filters.date||today):period==='month'?(filters.month||today.slice(0,7)):(filters.year||today.slice(0,4)));
       let start,end;
@@ -439,9 +438,21 @@
     createJob(data){return mutate('CREATE',null,data,data.files||[]);},
     updateOpenJob(data){return mutate('UPDATE_OPEN',data.jobId,data,data.files||[]);},
     cancelJob(jobId,reason=''){return mutate('CANCEL',jobId,{reason},[]);},
-    acceptJob(jobId){return mutate('ACCEPT',jobId,{},[]);},
+    acceptJob(jobId,data={}){return mutate('ACCEPT',jobId,{acceptComment:String(data.acceptComment||'')},[]);},
     saveCorrectiveAction(data){return mutate(data.submitToQA===true?'SUBMIT':'SAVE',data.jobId,data,data.files||[]);},
     saveQaVerification(data){return mutate('VERIFY',data.jobId,data,[]);},
+    async saveAnnotatedImage(image,blob){
+      if(!(blob instanceof Blob) || blob.type!=='image/png') throw new Error('ANNOTATION_IMAGE_REQUIRED');
+      if(!image?.attachmentId) throw new Error('ATTACHMENT_REQUIRED');
+      const requestId=crypto.randomUUID();
+      const path=`${QA.profile.user_id}/${requestId}/${crypto.randomUUID()}.png`;
+      const fileName='annotated-'+String(image.fileName||'image').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(-120)+'.png';
+      const {error:uploadError}=await QA.client.storage.from(cfg.imageBucket).upload(path,blob,{contentType:'image/png',upsert:false,cacheControl:'3600'});
+      if(uploadError) throw uploadError;
+      const {data,error}=await QA.client.rpc('qa_save_image_annotation',{p_attachment_id:image.attachmentId,p_storage_path:path,p_file_name:fileName,p_mime_type:'image/png',p_size_bytes:blob.size});
+      if(error) throw error;
+      return data;
+    },
     async exportJobPdf(jobId){if(!QA.exportReport)throw new Error('report.js did not load');return QA.exportReport(jobId);}
   };
   QA.api=api;

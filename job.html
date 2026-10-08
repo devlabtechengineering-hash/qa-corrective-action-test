@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA job page V33.2.0: workflow tracker. Retains navigation V33.1.0 and PDF V33.1.1. -->
+  <!-- QA job page V37.0: workflow tracker. Retains navigation V37.0 and PDF V37.0. -->
   <meta name="qa-job-version" content="33.2.0">
   <meta name="qa-pdf-version" content="33.1.1">
   <meta name="qa-page" content="job">
@@ -9,8 +9,8 @@
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=35.3"></script>
-  <script src="navigation.js?v=35.2"></script>
+  <script src="supabase-api.js?v=37.0"></script>
+  <script src="navigation.js?v=37.0"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -355,7 +355,7 @@
     }
   </style>
 
-  <!-- Job progress tracker V33.2.0: presentation only; SQL remains authoritative. -->
+  <!-- Job progress tracker V37.0: presentation only; SQL remains authoritative. -->
   <style id="qa-progress-style">
     #jobProgressCard {
       --qpt-accent: #b45309;
@@ -488,7 +488,7 @@
 
 <div class="header">
   <div class="header-inner">
-    <h1>Inter-Department Work Request</h1>
+    <h1>Complain &amp; Action Request</h1>
     <p>รายละเอียดใบงาน / การดำเนินการ</p>
   </div>
 </div>
@@ -531,11 +531,11 @@
     </div>
 
 
-    <!-- JOB PROGRESS V33.2.0: not a form, not a status-changing control. -->
+    <!-- JOB PROGRESS V37.0: not a form, not a status-changing control. -->
     <section id="jobProgressCard" class="card" aria-labelledby="jobProgressHeading"
              aria-describedby="jobProgressFootnote" data-status="UNKNOWN" data-motion="running">
       <div class="qpt-topline">
-        <p class="qpt-kicker">WORKFLOW <span class="qpt-version">V33.2.0</span></p>
+        <p class="qpt-kicker">WORKFLOW <span class="qpt-version">V37.0</span></p>
         <span id="jobProgressStage" class="qpt-mini"></span>
       </div>
       <h2 id="jobProgressHeading">ติดตามสถานะใบงาน</h2>
@@ -543,27 +543,9 @@
       <p id="jobProgressAnnouncement" class="qpt-sr" role="status" aria-live="polite" aria-atomic="true"></p>
       <ol id="jobProgressSteps" class="qpt-steps" aria-label="ขั้นตอนของใบงาน"></ol>
 
-      <div class="qpt-next">
-        <p class="qpt-next-label">ขั้นตอนถัดไป</p>
-        <p id="jobProgressNextTitle" class="qpt-next-title"></p>
-        <p id="jobProgressNextDetail" class="qpt-next-detail"></p>
-        <div id="jobProgressActionWrap" class="qpt-next-actions" hidden>
-          <button id="jobProgressAction" type="button" hidden></button>
-        </div>
-      </div>
       <div id="jobProgressReturn" class="qpt-return" hidden>
         <strong id="jobProgressReturnTitle">ผู้แจ้งส่งกลับแก้ไข</strong>
         <p id="jobProgressReturnText"></p>
-      </div>
-      <dl class="qpt-facts">
-        <div><dt>ผู้ดำเนินการต่อ</dt><dd id="jobProgressOwner"></dd></div>
-        <div><dt>รอบการแก้ไข</dt><dd id="jobProgressRound"></dd></div>
-        <div><dt>ข้อมูลใบงานอัปเดตเมื่อ</dt><dd id="jobProgressUpdated"></dd></div>
-      </dl>
-      <div class="qpt-foot">
-        <p id="jobProgressFootnote">แสดงสถานะที่โหลดจากใบงาน ไม่ใช่เปอร์เซ็นต์ความสำเร็จ<br>
-          หากอีกคนเปลี่ยนสถานะ ให้โหลดหน้าใหม่หลังจัดการข้อมูลที่ยังไม่ได้บันทึก</p>
-        <button id="jobProgressMotion" type="button" aria-pressed="false">หยุดเอฟเฟกต์</button>
       </div>
     </section>
 
@@ -632,6 +614,13 @@
           <div id="problemDetail" class="info-value"></div>
         </div>
 
+        <div id="acceptanceNoteBlock" class="full" style="display:none;padding:14px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;">
+          <div class="info-label">ข้อความเพิ่มเติมจาก System Admin ก่อนรับงาน</div>
+          <div id="acceptanceCommentDisplay" class="info-value" style="white-space:pre-wrap;"></div>
+          <div class="info-label" style="margin-top:10px;">ลงนาม</div>
+          <div id="acceptanceSignedNameDisplay" class="info-value"></div>
+        </div>
+
       </div>
 
     </div>
@@ -658,6 +647,13 @@
         งานนี้ยังอยู่ในสถานะ OPEN
         เมื่อเริ่มดำเนินการให้กดปุ่มรับงาน
       </p>
+
+      <div id="systemAdminAcceptNote" style="display:none;margin:14px 0;padding:14px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;">
+        <label for="acceptAdminComment" style="display:block;font-weight:700;margin-bottom:6px;">ข้อความเพิ่มเติมถึงแผนกผู้รับงาน</label>
+        <textarea id="acceptAdminComment" maxlength="5000" placeholder="ระบุคำแนะนำ หมายเหตุ หรือข้อความจากผู้จัดการก่อนส่งต่อให้แผนกผู้รับงาน"></textarea>
+        <label for="acceptAdminSigner" style="display:block;font-weight:700;margin:10px 0 6px;">ลงนามโดย</label>
+        <input id="acceptAdminSigner" type="text" readonly>
+      </div>
 
       <div class="button-row">
         <button
@@ -990,6 +986,18 @@
       currentJob.problemDetail
     );
 
+    const acceptanceBlock=document.getElementById('acceptanceNoteBlock');
+    if(acceptanceBlock){
+      const hasAcceptanceNote=Boolean(String(currentJob.acceptanceComment||'').trim() || String(currentJob.acceptanceSignedName||'').trim());
+      acceptanceBlock.style.display=hasAcceptanceNote?'block':'none';
+      setText('acceptanceCommentDisplay',currentJob.acceptanceComment||'-');
+      setText('acceptanceSignedNameDisplay',currentJob.acceptanceSignedName||'-');
+    }
+    const adminAcceptNote=document.getElementById('systemAdminAcceptNote');
+    const adminSigner=document.getElementById('acceptAdminSigner');
+    if(adminAcceptNote) adminAcceptNote.style.display=QA.profile?.role==='system_admin'&&currentJob.status==='OPEN'?'block':'none';
+    if(adminSigner) adminSigner.value=QA.profile?.display_name||'';
+
     const status =
       document.getElementById(
         'statusDisplay'
@@ -997,7 +1005,7 @@
 
     QA.setStatusBadge(status, currentJob.status);
     updateOwnerActions();
-    document.title = currentJob.jobId + ' | ' + QA.statusInfo(currentJob.status).label + ' | Work Request';
+    document.title = currentJob.jobId + ' | ' + QA.statusInfo(currentJob.status).label + ' | Complain & Action Tracking';
 
     document.getElementById(
       'assigneeName'
@@ -1038,7 +1046,7 @@ renderCorrectiveHistory(
   }
 
 
-  /* Job progress V33.2.0.
+  /* Job progress V37.0.
      Uses the confirmed job snapshot only. No timers, network requests, new status
      values, database writes, or LINE calls are made by this presentation layer.
      REWORK returns to the correction step; it is not a milestone toward closure.
@@ -1175,11 +1183,6 @@ renderCorrectiveHistory(
     const put = (id,value) => {document.getElementById(id).textContent=value;};
     put('jobProgressStage',model.stageText);
     put('jobProgressOverview',model.overview);
-    put('jobProgressNextTitle',model.nextTitle);
-    put('jobProgressNextDetail',model.nextDetail);
-    put('jobProgressOwner',model.owner);
-    put('jobProgressRound',model.roundLabel);
-    put('jobProgressUpdated',model.updated);
     put('jobProgressReturnTitle',model.returnTitle);
     put('jobProgressReturnText',model.returnText);
     document.getElementById('jobProgressReturn').hidden = !model.showReturn;
@@ -1199,37 +1202,8 @@ renderCorrectiveHistory(
       node.innerHTML=jobProgressIcon(index,step.state==='done',model.status==='REWORK'&&index===1);
       const copy=document.createElement('div');copy.className='qpt-step-copy';
       const title=document.createElement('div');title.className='qpt-step-title';title.textContent=step.title;
-      const meta=document.createElement('div');meta.className='qpt-step-meta';meta.textContent=step.meta;
-      const state=document.createElement('div');state.className='qpt-state-label';state.textContent=step.stateLabel;
-      copy.append(title,meta,state);li.append(connector,node,copy);list.append(li);
+      copy.append(title);li.append(connector,node,copy);list.append(li);
     });
-    const button=document.getElementById('jobProgressAction');
-    const wrap=document.getElementById('jobProgressActionWrap');
-    const target=model.target && document.getElementById(model.target);
-    // Match the existing permission-controlled section. The button only scrolls;
-    // it does not accept, submit, approve, or modify any field/status.
-    const available=Boolean(target && getComputedStyle(target).display!=='none');
-    button.hidden=!available;wrap.hidden=!available;
-    button.textContent=model.actionLabel;
-    button.onclick=available ? () => {
-      const el=document.getElementById(model.target);
-      if(!el || getComputedStyle(el).display==='none') return;
-      const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      el.scrollIntoView({behavior:reduced ? 'auto':'smooth',block:'start'});
-      const focus=model.focus && document.getElementById(model.focus);
-      if(focus && !focus.disabled) focus.focus({preventScroll:true});
-    } : null;
-    const motion=document.getElementById('jobProgressMotion');
-    motion.hidden=!model.animate;
-    motion.setAttribute('aria-pressed',String(jobProgressMotionPaused));
-    motion.textContent=jobProgressMotionPaused ? 'เปิดเอฟเฟกต์' : 'หยุดเอฟเฟกต์';
-    motion.title='หยุดหรือเปิดภาพเคลื่อนไหวเท่านั้น ไม่เปลี่ยนสถานะใบงาน';
-    motion.onclick=() => {
-      jobProgressMotionPaused=!jobProgressMotionPaused;
-      card.dataset.motion=jobProgressMotionPaused?'paused':'running';
-      motion.setAttribute('aria-pressed',String(jobProgressMotionPaused));
-      motion.textContent=jobProgressMotionPaused?'เปิดเอฟเฟกต์':'หยุดเอฟเฟกต์';
-    };
   }
 
 
@@ -1498,7 +1472,7 @@ renderCorrectiveHistory(
           const img = document.createElement('img');
           img.src = image.url;
           img.onclick = function() {
-            window.open(image.url, '_blank', 'noopener,noreferrer');
+            openImageEditor(image);
           };
 
           const desc = document.createElement('div');
@@ -1661,7 +1635,7 @@ function enableCorrectiveForm() {
 
       })
 
-      .acceptJob(JOB_ID);
+      .acceptJob(JOB_ID,{acceptComment:QA.profile?.role==='system_admin'?(document.getElementById('acceptAdminComment')?.value||''):''});
 
   }
 
@@ -1961,7 +1935,7 @@ function enableCorrectiveForm() {
       img.src = image.url;
 
       img.onclick = function() {
-        window.open(image.url, '_blank', 'noopener,noreferrer');
+        openImageEditor(image);
       };
 
       const desc =
@@ -1981,6 +1955,40 @@ function enableCorrectiveForm() {
 
     });
 
+  }
+
+  let qaImageEditor=null;
+  function canAnnotateImage(){
+    if(!currentJob||!QA.profile) return false;
+    return QA.profile.role==='system_admin' || currentJob.createdBy===QA.profile.user_id ||
+      (QA.profile.role==='department_admin' && [currentJob.fromDepartment,currentJob.toDepartment].includes(QA.profile.department));
+  }
+  function ensureImageEditor(){
+    if(qaImageEditor) return qaImageEditor;
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:#0f172acc;z-index:20000;display:none;align-items:center;justify-content:center;padding:18px;';
+    overlay.innerHTML='<div style="background:white;width:min(1100px,96vw);height:min(850px,94vh);border-radius:12px;display:flex;flex-direction:column;overflow:hidden"><div style="display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #e2e8f0;flex-wrap:wrap"><b style="margin-right:auto">แก้ไขรูปภาพ</b><button type="button" data-tool="draw">วาดเส้น</button><button type="button" data-tool="text">เพิ่มข้อความ</button><button type="button" data-tool="undo">ย้อนกลับ</button><button type="button" data-tool="save" style="background:#2563eb;color:#fff">บันทึกเป็นรูปใหม่</button><button type="button" data-tool="close">ปิด</button></div><div data-status style="padding:6px 12px;color:#475569;font-size:13px">ลากบนรูปเพื่อวาดเส้น</div><div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#e2e8f0;overflow:auto;padding:12px"><canvas style="max-width:100%;max-height:100%;background:#fff;touch-action:none;box-shadow:0 2px 12px #0002"></canvas></div></div>';
+    document.body.appendChild(overlay);
+    const canvas=overlay.querySelector('canvas'),ctx=canvas.getContext('2d');
+    const state={image:null,bg:null,ops:[],drawing:false,current:null,textPending:''};
+    const redraw=()=>{if(!state.bg)return;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(state.bg,0,0,canvas.width,canvas.height);for(const op of state.ops){if(op.type==='line'){ctx.strokeStyle='#dc2626';ctx.lineWidth=Math.max(3,canvas.width/350);ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();op.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();}else if(op.type==='text'){ctx.fillStyle='#dc2626';ctx.font=`bold ${Math.max(18,canvas.width/35)}px Arial,Tahoma,sans-serif`;ctx.fillText(op.text,op.x,op.y);}}if(state.current){ctx.strokeStyle='#dc2626';ctx.lineWidth=Math.max(3,canvas.width/350);ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();state.current.points.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();}};
+    const point=e=>{const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};};
+    canvas.addEventListener('pointerdown',e=>{if(state.textPending){const p=point(e);state.ops.push({type:'text',text:state.textPending,x:p.x,y:p.y});state.textPending='';overlay.querySelector('[data-status]').textContent='ลากบนรูปเพื่อวาดเส้น';redraw();return;}state.drawing=true;state.current={type:'line',points:[point(e)]};canvas.setPointerCapture(e.pointerId);});
+    canvas.addEventListener('pointermove',e=>{if(!state.drawing||!state.current)return;state.current.points.push(point(e));redraw();});
+    const end=()=>{if(state.drawing&&state.current){if(state.current.points.length>1)state.ops.push(state.current);state.current=null;state.drawing=false;redraw();}};
+    canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);
+    overlay.querySelector('[data-tool="draw"]').onclick=()=>{state.textPending='';overlay.querySelector('[data-status]').textContent='ลากบนรูปเพื่อวาดเส้น';};
+    overlay.querySelector('[data-tool="text"]').onclick=()=>{const t=prompt('ข้อความที่ต้องการเพิ่มบนรูป');if(t&&t.trim()){state.textPending=t.trim().slice(0,200);overlay.querySelector('[data-status]').textContent='คลิกตำแหน่งบนรูปเพื่อวางข้อความ';}};
+    overlay.querySelector('[data-tool="undo"]').onclick=()=>{state.ops.pop();redraw();};
+    overlay.querySelector('[data-tool="close"]').onclick=()=>{overlay.style.display='none';state.ops=[];state.image=null;state.bg=null;};
+    overlay.querySelector('[data-tool="save"]').onclick=async()=>{const btn=overlay.querySelector('[data-tool="save"]');btn.disabled=true;overlay.querySelector('[data-status]').textContent='กำลังบันทึกรูป...';try{const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('ไม่สามารถสร้างไฟล์รูปได้')),'image/png',0.92));await QA.api.saveAnnotatedImage(state.image,blob);overlay.style.display='none';showMessage('บันทึกรูปที่แก้ไขแล้วเป็นไฟล์ใหม่เรียบร้อย',true);await loadJob();}catch(e){showMessage(QA.errorOf(e).message,false);overlay.querySelector('[data-status]').textContent='บันทึกไม่สำเร็จ';}finally{btn.disabled=false;}};
+    qaImageEditor={overlay,canvas,state,redraw};return qaImageEditor;
+  }
+  function openImageEditor(image){
+    if(!canAnnotateImage()){window.open(image.url,'_blank','noopener,noreferrer');return;}
+    const ed=ensureImageEditor();const img=new Image();img.crossOrigin='anonymous';
+    img.onload=()=>{const max=1800,scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));ed.canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));ed.canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));ed.state.image=image;ed.state.bg=img;ed.state.ops=[];ed.state.current=null;ed.state.textPending='';ed.redraw();ed.overlay.querySelector('[data-status]').textContent='ลากบนรูปเพื่อวาดเส้น หรือกด “เพิ่มข้อความ”';ed.overlay.style.display='flex';};
+    img.onerror=()=>showMessage('ไม่สามารถเปิดรูปเพื่อแก้ไขได้',false);img.src=image.url;
   }
 
   function setText(id, value) {
@@ -2360,7 +2368,7 @@ async function submitQaResult(approved) {
       wrap.append(title,grid);preview.before(wrap);}
     // Keep the original Export PDF button only.
     const exportButton=document.getElementById('exportPdfBtn');
-    if(exportButton) exportButton.title='PDF V33.1.1';
+    if(exportButton) exportButton.title='PDF V37.0';
   });
 </script>
 </body>
