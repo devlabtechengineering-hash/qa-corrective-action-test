@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA job page V37.0: workflow tracker. Retains navigation V37.0 and PDF V37.0. -->
+  <!-- QA job page V37.1: workflow tracker. Retains navigation V37.1 and PDF V37.1. -->
   <meta name="qa-job-version" content="33.2.0">
   <meta name="qa-pdf-version" content="33.1.1">
   <meta name="qa-page" content="job">
@@ -9,8 +9,8 @@
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=37.0"></script>
-  <script src="navigation.js?v=37.0"></script>
+  <script src="supabase-api.js?v=37.1"></script>
+  <script src="navigation.js?v=37.1"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -355,7 +355,7 @@
     }
   </style>
 
-  <!-- Job progress tracker V37.0: presentation only; SQL remains authoritative. -->
+  <!-- Job progress tracker V37.1: presentation only; SQL remains authoritative. -->
   <style id="qa-progress-style">
     #jobProgressCard {
       --qpt-accent: #b45309;
@@ -518,6 +518,8 @@
           <button id="editRequestBtn" type="button" style="display:none;background:#0f766e;color:white;padding:9px 14px;" onclick="editRequest()">แก้ไขใบแจ้ง</button>
           <button id="cancelRequestBtn" type="button" style="display:none;background:#b91c1c;color:white;padding:9px 14px;" onclick="cancelRequest()">ยกเลิกใบงาน</button>
 
+          <button id="rollbackStatusBtn" type="button" style="display:none;background:#7c3aed;color:white;padding:9px 14px;" onclick="rollbackCurrentJob()">ย้อนสถานะ</button>
+
           <button
             id="exportPdfBtn"
             type="button"
@@ -531,11 +533,11 @@
     </div>
 
 
-    <!-- JOB PROGRESS V37.0: not a form, not a status-changing control. -->
+    <!-- JOB PROGRESS V37.1: not a form, not a status-changing control. -->
     <section id="jobProgressCard" class="card" aria-labelledby="jobProgressHeading"
              aria-describedby="jobProgressFootnote" data-status="UNKNOWN" data-motion="running">
       <div class="qpt-topline">
-        <p class="qpt-kicker">WORKFLOW <span class="qpt-version">V37.0</span></p>
+        <p class="qpt-kicker">WORKFLOW <span class="qpt-version">V37.1</span></p>
         <span id="jobProgressStage" class="qpt-mini"></span>
       </div>
       <h2 id="jobProgressHeading">ติดตามสถานะใบงาน</h2>
@@ -650,7 +652,7 @@
 
       <div id="systemAdminAcceptNote" style="display:none;margin:14px 0;padding:14px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;">
         <label for="acceptAdminComment" style="display:block;font-weight:700;margin-bottom:6px;">ข้อความเพิ่มเติมถึงแผนกผู้รับงาน</label>
-        <textarea id="acceptAdminComment" maxlength="5000" placeholder="ระบุคำแนะนำ หมายเหตุ หรือข้อความจากผู้จัดการก่อนส่งต่อให้แผนกผู้รับงาน"></textarea>
+        <textarea id="acceptAdminComment" maxlength="5000"></textarea>
         <label for="acceptAdminSigner" style="display:block;font-weight:700;margin:10px 0 6px;">ลงนามโดย</label>
         <input id="acceptAdminSigner" type="text" readonly>
       </div>
@@ -1004,6 +1006,7 @@
       );
 
     QA.setStatusBadge(status, currentJob.status);
+    updateRollbackButton();
     updateOwnerActions();
     document.title = currentJob.jobId + ' | ' + QA.statusInfo(currentJob.status).label + ' | Complain & Action Tracking';
 
@@ -1046,7 +1049,7 @@ renderCorrectiveHistory(
   }
 
 
-  /* Job progress V37.0.
+  /* Job progress V37.1.
      Uses the confirmed job snapshot only. No timers, network requests, new status
      values, database writes, or LINE calls are made by this presentation layer.
      REWORK returns to the correction step; it is not a milestone toward closure.
@@ -1586,6 +1589,42 @@ function enableCorrectiveForm() {
   });
 
 }
+
+  function rollbackTargetForJob() {
+    if(QA.profile?.role!=='system_admin' || !currentJob) return '';
+    const status=String(currentJob.status||'').toUpperCase();
+    if(status==='IN_PROGRESS') return (currentJob.correctiveLogs||[]).length===0 ? 'OPEN' : '';
+    if(status==='WAITING_REVIEW') return 'IN_PROGRESS';
+    if(status==='REWORK') return 'WAITING_REVIEW';
+    if(status==='CLOSED') return 'WAITING_REVIEW';
+    if(status==='CANCELLED') return 'OPEN';
+    return '';
+  }
+
+  function updateRollbackButton(){
+    const btn=document.getElementById('rollbackStatusBtn');
+    if(!btn)return;
+    const target=rollbackTargetForJob();
+    btn.style.display=target?'inline-block':'none';
+    btn.dataset.target=target;
+    if(target) btn.title='ย้อน '+currentJob.status+' → '+target;
+  }
+
+  function rollbackCurrentJob(){
+    const target=rollbackTargetForJob();
+    if(!target){showMessage('สถานะนี้ไม่สามารถย้อนด้วยปุ่มนี้ได้',false);return;}
+    const reason=prompt('ย้อนสถานะ '+currentJob.status+' → '+target+'\n\nกรุณาระบุเหตุผลในการย้อนสถานะ');
+    if(reason===null)return;
+    if(String(reason).trim().length<3){showMessage('กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร',false);return;}
+    if(!confirm('ยืนยันย้อนสถานะ\n'+currentJob.status+' → '+target+'\n\nเหตุผล: '+String(reason).trim()))return;
+    const btn=document.getElementById('rollbackStatusBtn');btn.disabled=true;btn.textContent='กำลังย้อนสถานะ...';
+    QA.run.withSuccessHandler(function(result){
+      btn.disabled=false;btn.textContent='ย้อนสถานะ';
+      if(!result?.success){showMessage(result?.message||'ย้อนสถานะไม่สำเร็จ',false);return;}
+      showMessage('ย้อนสถานะเรียบร้อยแล้ว',true);loadJob();
+    }).withFailureHandler(function(error){btn.disabled=false;btn.textContent='ย้อนสถานะ';showMessage(error.message,false);})
+      .adminRollbackJob(JOB_ID,target,String(reason).trim());
+  }
 
   function acceptCurrentJob() {
 
@@ -2368,7 +2407,7 @@ async function submitQaResult(approved) {
       wrap.append(title,grid);preview.before(wrap);}
     // Keep the original Export PDF button only.
     const exportButton=document.getElementById('exportPdfBtn');
-    if(exportButton) exportButton.title='PDF V37.0';
+    if(exportButton) exportButton.title='PDF V37.1';
   });
 </script>
 </body>

@@ -1,11 +1,11 @@
-/* QA V37.0 navigation/status patch (2026-09-24).
+/* QA V37.1 navigation/status patch (2026-09-24).
    QA V33 adapter. No Apps Script runtime is required.
    Original callback-shaped calls are preserved as QA.run; the implementation is Supabase.
    Mutation permissions and transitions are enforced in SQL, not by these UI checks. */
 (() => {
   'use strict';
   const cfg = window.QA_CONFIG || {};
-  const QA = window.QA = {profile: null, client: null, version: '37.0'};
+  const QA = window.QA = {profile: null, client: null, version: '37.1'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -190,7 +190,7 @@
       const routePage=pageName(),incomingId=QA.jobIdFromUrl();
       if(actualPage && routePage && actualPage!==routePage) {
         throw new Error('HTML_PAGE_MISMATCH: '+location.pathname+
-          ' contains the '+actualPage+' page. Upload the matching V37.0 HTML file to GitHub.');
+          ' contains the '+actualPage+' page. Upload the matching V37.1 HTML file to GitHub.');
       }
       if(routePage==='create' && incomingId) {location.replace(QA.jobUrl(incomingId));return;}
       initClient();
@@ -230,6 +230,21 @@
           const sel=document.getElementById('department');
           for(const d of depts||[]){const o=document.createElement('option');o.value=d.code;o.textContent=d.code;sel.append(o);}
         } catch(e){document.getElementById('signupError').textContent=errorOf(e).message;}
+        const deptRequestBtn=document.getElementById('departmentRequestBtn');
+        if(deptRequestBtn) deptRequestBtn.addEventListener('click',async()=>{
+          const box=document.getElementById('departmentRequestMsg');box.textContent='';
+          const code=document.getElementById('newDepartmentCode').value.trim();
+          const name=document.getElementById('newDepartmentName').value.trim();
+          const requesterName=document.getElementById('displayName').value.trim();
+          const requesterEmail=document.getElementById('email').value.trim();
+          if(!code||!name){box.textContent='กรุณากรอกรหัสและชื่อแผนก';return;}
+          deptRequestBtn.disabled=true;
+          try{
+            const result=await rpc('qa_request_department',{p_code:code,p_name:name,p_requester_name:requesterName,p_requester_email:requesterEmail});
+            if(!result?.success) throw new Error('ส่งคำขอไม่สำเร็จ');
+            box.style.color='#166534';box.textContent='ส่งคำขอเพิ่มแผนก '+result.code+' แล้ว กรุณารอ System Admin อนุมัติ แล้วกลับมารีเฟรชหน้านี้เพื่อสมัครสมาชิก';
+          }catch(err){box.style.color='#b91c1c';box.textContent=errorOf(err).message;}finally{deptRequestBtn.disabled=false;}
+        });
         document.getElementById('signupForm').addEventListener('submit',async e=>{
           e.preventDefault();const btn=document.getElementById('signupBtn');btn.disabled=true;
           const box=document.getElementById('signupError');box.textContent='';
@@ -414,6 +429,34 @@
     async getAdminUsers(){return await rpc('qa_admin_users',{});},
     async updateAdminUser(data){return await rpc('qa_admin_update_user',{p_user_id:data.userId,p_display_name:data.displayName,p_role:data.role,p_department:data.department||'',p_active:!!data.active,p_approval_status:data.approvalStatus});},
     async upsertSetting(data){return await rpc('qa_admin_upsert_setting',{p_type:data.type,p_code:data.code,p_name:data.name,p_sort_order:Number(data.sortOrder)||999,p_active:data.active!==false});},
+    async getAdminSettings(){return await rpc('qa_admin_settings',{});},
+    async getDepartmentRequests(){return await rpc('qa_admin_department_requests',{});},
+    async reviewDepartmentRequest(requestId,approve,reviewNote=''){return await rpc('qa_admin_review_department_request',{p_request_id:requestId,p_approve:!!approve,p_review_note:String(reviewNote||'')});},
+    async adminRollbackJob(jobId,targetStatus,reason){
+      await ready;
+      const expected=versions.get(jobId);
+      if(!Number.isInteger(expected)) throw new Error('Load the job before rollback.');
+      const result=await rpc('qa_admin_rollback_status',{p_job_id:jobId,p_target_status:targetStatus,p_reason:String(reason||''),p_expected_version:expected});
+      if(result?.version) versions.set(jobId,result.version);
+      return result;
+    },
+    async getDashboardExportData(filters={}){
+      const period=['day','month','year'].includes(filters.period)?filters.period:'month';
+      const today=keyOf();
+      const key=String(period==='day'?(filters.date||today):period==='month'?(filters.month||today.slice(0,7)):(filters.year||today.slice(0,4)));
+      let start,end;
+      if(period==='day'){
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(key)) throw new Error('Invalid date');
+        start=new Date(key+'T00:00:00+07:00'); end=new Date(start.getTime()+86400000);
+      }else{
+        const valid=period==='month'?/^\d{4}-\d{2}$/.test(key):/^\d{4}$/.test(key); if(!valid) throw new Error('Invalid period');
+        const y=Number(key.slice(0,4)),m=period==='month'?Number(key.slice(5,7)):1;
+        start=new Date(`${y}-${String(m).padStart(2,'0')}-01T00:00:00+07:00`);
+        end=new Date(Date.UTC(period==='year'?y+1:y,period==='year'?0:m,1)-7*3600000);
+      }
+      const rows=await rpc('qa_dashboard_export',{p_start:start.toISOString(),p_end:end.toISOString()});
+      return {success:true,period,selectedKey:key,selectedLabel:formatDashboardPeriodLabel(period,key),rows:rows||[]};
+    },
     async adminSetTemporaryPassword(userId,tempPassword){
       const password=String(tempPassword||'');
       if(password.length<8) throw new Error('รหัสผ่านชั่วคราวต้องมีอย่างน้อย 8 ตัวอักษร');

@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA V37.0 requester-review workflow -->
+  <!-- QA V37.1 requester-review workflow -->
   <meta name="qa-page" content="dashboard">
   <meta charset="UTF-8">
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=37.0"></script>
-  <script src="navigation.js?v=37.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="supabase-api.js?v=37.1"></script>
+  <script src="navigation.js?v=37.1"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -476,9 +477,6 @@
       <h1 class="dashboard-title">
         Dashboard
       </h1>
-      <p class="dashboard-subtitle">
-        สรุปใบงานตามแผนกผู้รับงานและสถานะ (รวม QA)
-      </p>
     </div>
 
   </div>
@@ -550,6 +548,12 @@
           class="refresh-btn"
           onclick="loadDashboard()">
           แสดงข้อมูล
+        </button>
+      </div>
+
+      <div id="exportExcelWrap" style="display:none;">
+        <button type="button" class="refresh-btn" style="background:#166534" onclick="exportDashboardExcel()">
+          Export Excel (.xlsx)
         </button>
       </div>
 
@@ -738,6 +742,8 @@
       className: 'c-cancelled'
     }
   };
+
+  let lastDashboardData = null;
 
   document.addEventListener(
     'DOMContentLoaded',
@@ -1004,6 +1010,9 @@
   }
 
   function renderDashboard(data) {
+    lastDashboardData = data;
+    const exportWrap=document.getElementById('exportExcelWrap');
+    if(exportWrap) exportWrap.style.display=['system_admin','department_admin'].includes(QA.profile?.role)?'block':'none';
     document.getElementById(
       'totalJobs'
     ).textContent =
@@ -1533,6 +1542,66 @@
       .textContent =
         message;
   }
+
+
+  async function exportDashboardExcel() {
+    if(!['system_admin','department_admin'].includes(QA.profile?.role)) {
+      alert('ไม่มีสิทธิ์ Export ข้อมูล Dashboard'); return;
+    }
+    if(!window.XLSX) {alert('โหลด Excel library ไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองใหม่');return;}
+    const filters=getDashboardFilters();
+    try {
+      const detail=await QA.api.getDashboardExportData(filters);
+      const summary=lastDashboardData || await QA.api.getDashboardData(filters);
+      const summaryRows=[
+        {Metric:'Period',Value:summary.selectedLabel||detail.selectedLabel||''},
+        {Metric:'Total Jobs',Value:summary.totals?.TOTAL||0},
+        {Metric:'OPEN',Value:summary.totals?.OPEN||0},
+        {Metric:'IN_PROGRESS',Value:summary.totals?.IN_PROGRESS||0},
+        {Metric:'WAITING_REVIEW',Value:summary.totals?.WAITING_REVIEW||0},
+        {Metric:'REWORK',Value:summary.totals?.REWORK||0},
+        {Metric:'CLOSED',Value:summary.totals?.CLOSED||0},
+        {Metric:'CANCELLED',Value:summary.totals?.CANCELLED||0}
+      ];
+      (summary.departments||[]).forEach(d=>summaryRows.push({Metric:'Department '+d.code,Value:d.total||0}));
+      const rows=(detail.rows||[]).map(r=>({
+        'Job No.':r.job_id||'',
+        'Created Date':excelDate(r.created_at),
+        'Status':r.status||'',
+        'Priority':r.priority||'',
+        'From Department':r.from_department||'',
+        'To Department':r.to_department||'',
+        'Requester':r.requester||'',
+        'Category':r.category||'',
+        'Description':r.problem_detail||'',
+        'Location':r.location||'',
+        'Impact':r.impact||'',
+        'Accepted By':r.accepted_by_name||'',
+        'Accepted Date':excelDate(r.accepted_at),
+        'Admin Comment':r.admin_comment||'',
+        'Corrective Action':r.corrective_action||'',
+        'Preventive Action':r.preventive_action||'',
+        'Submitted Date':excelDate(r.submitted_at),
+        'Reviewed By':r.reviewed_by||'',
+        'Closed Date':excelDate(r.closed_at),
+        'Rework Count':Number(r.rework_count||0),
+        'Lead Time (Hours)':r.lead_time_hours==null?'':Number(r.lead_time_hours),
+        'Last Updated':excelDate(r.updated_at),
+        'Attachment Count':Number(r.attachment_count||0),
+        'Job Link':QA.jobUrl(r.job_id)
+      }));
+      const wb=XLSX.utils.book_new();
+      const ws1=XLSX.utils.json_to_sheet(summaryRows);
+      const ws2=XLSX.utils.json_to_sheet(rows.length?rows:[{'No data':''}]);
+      ws1['!cols']=[{wch:32},{wch:24}];
+      ws2['!cols']=[{wch:18},{wch:20},{wch:18},{wch:12},{wch:18},{wch:18},{wch:24},{wch:18},{wch:45},{wch:24},{wch:35},{wch:24},{wch:20},{wch:45},{wch:45},{wch:45},{wch:20},{wch:24},{wch:20},{wch:14},{wch:18},{wch:20},{wch:16},{wch:55}];
+      XLSX.utils.book_append_sheet(wb,ws1,'Summary');
+      XLSX.utils.book_append_sheet(wb,ws2,'Job Data');
+      const safe=String(detail.selectedKey||'export').replace(/[^0-9A-Za-z_-]/g,'-');
+      XLSX.writeFile(wb,'Complain_Action_Dashboard_'+safe+'.xlsx');
+    } catch(e) {alert(QA.errorOf(e).message);}
+  }
+  function excelDate(v){if(!v)return'';try{return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(v)).replace(',','')}catch{return String(v)}}
 </script>
 
 </body>
