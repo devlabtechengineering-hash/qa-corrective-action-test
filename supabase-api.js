@@ -10,7 +10,7 @@
   cfg.signedUrlSeconds=Math.max(60,Math.min(3600,Number(cfg.signedUrlSeconds)||900));
   cfg.maxImageBytes=Math.max(1,Number(cfg.maxImageBytes)||5*1024*1024);
   cfg.maxFilesPerSave=Math.max(1,Math.min(20,Number(cfg.maxFilesPerSave)||20));
-  const QA = window.QA = {profile: null, client: null, version: '37.1.1'};
+  const QA = window.QA = {profile: null, client: null, version: '37.1.1.3'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -172,12 +172,9 @@
     if(!window.supabase?.createClient) throw new Error('Supabase library could not load. Check your Internet/CDN connection.');
     if(!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(cfg.supabaseUrl||'') || cfg.supabaseUrl.includes('YOUR_PROJECT'))
       throw new Error('Edit supabaseUrl in config.js first (project HTTPS URL).');
-    const publicKey=String(cfg.publishableKey || cfg.supabaseAnonKey || '').trim();
-    const looksLikePublishable=/^sb_publishable_[A-Za-z0-9_-]+$/.test(publicKey);
-    const looksLikeLegacyAnon=/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(publicKey);
-    if(!publicKey || publicKey.includes('REPLACE') || !(looksLikePublishable || looksLikeLegacyAnon))
-      throw new Error('Edit config.js: use publishableKey or the existing supabaseAnonKey (public/anon key only).');
-    QA.client=window.supabase.createClient(cfg.supabaseUrl,publicKey,{
+    if(!/^sb_publishable_/.test(cfg.publishableKey||'') || cfg.publishableKey.includes('REPLACE'))
+      throw new Error('Edit publishableKey in config.js. Only sb_publishable_ keys are accepted.');
+    QA.client=window.supabase.createClient(cfg.supabaseUrl,cfg.publishableKey,{
       auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:false}
     });
   }
@@ -206,50 +203,35 @@
       }
       if(routePage==='create' && incomingId) {location.replace(QA.jobUrl(incomingId));return;}
       initClient();
-      const withTimeout=(promise,ms,label)=>Promise.race([
-        promise,
-        new Promise((_,reject)=>setTimeout(()=>reject(new Error(label||'REQUEST_TIMEOUT')),ms))
-      ]);
+      const {data,error}=await QA.client.auth.getSession(); if(error) throw error;
       if(isLogin) {
-        // IMPORTANT: attach the login handler BEFORE reading any existing session.
-        // A stale/locked auth session must never make the login button inert.
         document.body.classList.remove('qa-auth-loading');
         const loginParams=new URLSearchParams(location.search);
         const confirmedNote=document.getElementById('emailConfirmedNote');
         if(confirmedNote && loginParams.get('confirmed')==='1') confirmedNote.hidden=false;
         const form=document.getElementById('loginForm');
-        if(!form) throw new Error('LOGIN_FORM_NOT_FOUND');
         form.addEventListener('submit',async e=>{
-          e.preventDefault();
-          const btn=document.getElementById('loginBtn');
-          const errorBox=document.getElementById('loginError');
-          btn.disabled=true; errorBox.textContent='';
+          e.preventDefault();const btn=document.getElementById('loginBtn');btn.disabled=true;
+          document.getElementById('loginError').textContent='';
           try {
             const email=document.getElementById('email').value.trim();
             const password=document.getElementById('password').value;
-            const {data:auth,error:err}=await withTimeout(
-              QA.client.auth.signInWithPassword({email,password}),15000,'LOGIN_TIMEOUT'
-            );
+            const {data:auth,error:err}=await QA.client.auth.signInWithPassword({email,password});
             if(err) throw err;
-            if(!auth?.user?.id) throw new Error('LOGIN_SESSION_MISSING');
-            const profile=await withTimeout(readProfile(auth.user.id),10000,'PROFILE_TIMEOUT');
+            const profile=await readProfile(auth.user.id);
             document.getElementById('password').value='';
-            location.replace(profile.must_change_password?QA.pageUrl('forcePassword'):QA.pageUrl('work'));
-          } catch(err) {
-            const code=String(err?.message||err||'');
-            errorBox.textContent=code==='LOGIN_TIMEOUT'
-              ? 'เชื่อมต่อระบบเข้าสู่ระบบนานเกินไป กรุณาตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง [LOGIN_TIMEOUT]'
-              : code==='PROFILE_TIMEOUT'
-              ? 'เข้าสู่ระบบสำเร็จ แต่โหลดข้อมูลผู้ใช้นานเกินไป กรุณาลองใหม่อีกครั้ง [PROFILE_TIMEOUT]'
-              : errorOf(err).message;
-          } finally {btn.disabled=false;}
+            if(profile.must_change_password){
+              location.replace(QA.pageUrl('forcePassword'));
+            }else{
+              location.replace(QA.pageUrl('work'));
+            }
+          } catch(err) {document.getElementById('loginError').textContent=errorOf(err).message;}
+          finally {btn.disabled=false;}
         });
         const signupLink=document.getElementById('signupLink');
         if(signupLink) signupLink.href=QA.pageUrl('signup');
         readyResolve(); return;
       }
-      const {data,error}=await withTimeout(QA.client.auth.getSession(),10000,'AUTH_SESSION_TIMEOUT');
-      if(error) throw error;
       if(isSignup) {
         document.body.classList.remove('qa-auth-loading');
         try {
