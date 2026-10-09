@@ -15,7 +15,7 @@
     maxImageBytes: Math.max(1, Number(rawCfg.maxImageBytes) || 5 * 1024 * 1024),
     maxFilesPerSave: Math.max(1, Math.min(20, Number(rawCfg.maxFilesPerSave) || 20))
   };
-  const QA = window.QA = {profile: null, client: null, version: '37.1.1.5'};
+  const QA = window.QA = {profile: null, client: null, version: '37.1.1'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
