@@ -4,13 +4,18 @@
    Mutation permissions and transitions are enforced in SQL, not by these UI checks. */
 (() => {
   'use strict';
-  const cfg = window.QA_CONFIG || {};
-  cfg.imageBucket=cfg.imageBucket||'qa-images';
-  cfg.reportBucket=cfg.reportBucket||'qa-reports';
-  cfg.signedUrlSeconds=Math.max(60,Math.min(3600,Number(cfg.signedUrlSeconds)||900));
-  cfg.maxImageBytes=Math.max(1,Number(cfg.maxImageBytes)||5*1024*1024);
-  cfg.maxFilesPerSave=Math.max(1,Math.min(20,Number(cfg.maxFilesPerSave)||20));
-  const QA = window.QA = {profile: null, client: null, version: '37.1.1.4'};
+  // QA_CONFIG may be Object.freeze(...) in production config.js.
+  // Never mutate it; build a local mutable copy with defaults instead.
+  const rawCfg = window.QA_CONFIG || {};
+  const cfg = {
+    ...rawCfg,
+    imageBucket: rawCfg.imageBucket || 'qa-images',
+    reportBucket: rawCfg.reportBucket || 'qa-reports',
+    signedUrlSeconds: Math.max(60, Math.min(3600, Number(rawCfg.signedUrlSeconds) || 900)),
+    maxImageBytes: Math.max(1, Number(rawCfg.maxImageBytes) || 5 * 1024 * 1024),
+    maxFilesPerSave: Math.max(1, Math.min(20, Number(rawCfg.maxFilesPerSave) || 20))
+  };
+  const QA = window.QA = {profile: null, client: null, version: '37.1.1.5'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
