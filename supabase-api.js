@@ -172,9 +172,12 @@
     if(!window.supabase?.createClient) throw new Error('Supabase library could not load. Check your Internet/CDN connection.');
     if(!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(cfg.supabaseUrl||'') || cfg.supabaseUrl.includes('YOUR_PROJECT'))
       throw new Error('Edit supabaseUrl in config.js first (project HTTPS URL).');
-    if(!/^sb_publishable_/.test(cfg.publishableKey||'') || cfg.publishableKey.includes('REPLACE'))
-      throw new Error('Edit publishableKey in config.js. Only sb_publishable_ keys are accepted.');
-    QA.client=window.supabase.createClient(cfg.supabaseUrl,cfg.publishableKey,{
+    const publicKey=String(cfg.publishableKey || cfg.supabaseAnonKey || '').trim();
+    const looksLikePublishable=/^sb_publishable_[A-Za-z0-9_-]+$/.test(publicKey);
+    const looksLikeLegacyAnon=/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(publicKey);
+    if(!publicKey || publicKey.includes('REPLACE') || !(looksLikePublishable || looksLikeLegacyAnon))
+      throw new Error('Edit config.js: use publishableKey or the existing supabaseAnonKey (public/anon key only).');
+    QA.client=window.supabase.createClient(cfg.supabaseUrl,publicKey,{
       auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:false}
     });
   }
