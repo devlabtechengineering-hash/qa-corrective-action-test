@@ -1,11 +1,16 @@
-/* QA V37.1 navigation/status patch (2026-09-24).
+/* QA V37.1.1 navigation/status patch (2026-09-24).
    QA V33 adapter. No Apps Script runtime is required.
    Original callback-shaped calls are preserved as QA.run; the implementation is Supabase.
    Mutation permissions and transitions are enforced in SQL, not by these UI checks. */
 (() => {
   'use strict';
   const cfg = window.QA_CONFIG || {};
-  const QA = window.QA = {profile: null, client: null, version: '37.1'};
+  cfg.imageBucket=cfg.imageBucket||'qa-images';
+  cfg.reportBucket=cfg.reportBucket||'qa-reports';
+  cfg.signedUrlSeconds=Math.max(60,Math.min(3600,Number(cfg.signedUrlSeconds)||900));
+  cfg.maxImageBytes=Math.max(1,Number(cfg.maxImageBytes)||5*1024*1024);
+  cfg.maxFilesPerSave=Math.max(1,Math.min(20,Number(cfg.maxFilesPerSave)||20));
+  const QA = window.QA = {profile: null, client: null, version: '37.1.1'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -115,7 +120,11 @@
     ASSIGNED_DEPARTMENT_ROLE_REQUIRED: 'Only the assigned department or admin can accept/edit this job.',
     JOB_NOT_FOUND_OR_FORBIDDEN: 'Job not found, or your account cannot access it.',
     INVALID_OR_INACTIVE_SETTINGS: 'Select active department, category and priority values from Settings.',
-    UNRESOLVED_REQUEST: 'A previous save has an unknown outcome. Click Recover pending save before making another change.'
+    UNRESOLVED_REQUEST: 'A previous save has an unknown outcome. Click Recover pending save before making another change.',
+    ANNOTATION_PERMISSION_REQUIRED: 'บัญชีนี้ไม่มีสิทธิ์แก้ไขรูปในสถานะปัจจุบัน',
+    CANNOT_DISABLE_OWN_ADMIN: 'ไม่สามารถปิดสิทธิ์ System Admin ของบัญชีที่กำลังใช้งานอยู่ได้',
+    LAST_SYSTEM_ADMIN_REQUIRED: 'ระบบต้องมี System Admin ที่ Active และ Approved อย่างน้อย 1 บัญชี',
+    ROLLBACK_TO_OPEN_NOT_ALLOWED_AFTER_WORK_DATA: 'ไม่สามารถย้อนกลับเป็น OPEN ได้ เพราะมีข้อมูลการดำเนินงานหรือรูปหลังดำเนินงานแล้ว'
   };
   function errorOf(e) {
     const msg = String(e?.message || e || 'Unknown error');
@@ -190,7 +199,7 @@
       const routePage=pageName(),incomingId=QA.jobIdFromUrl();
       if(actualPage && routePage && actualPage!==routePage) {
         throw new Error('HTML_PAGE_MISMATCH: '+location.pathname+
-          ' contains the '+actualPage+' page. Upload the matching V37.1 HTML file to GitHub.');
+          ' contains the '+actualPage+' page. Upload the matching V37.1.1 HTML file to GitHub.');
       }
       if(routePage==='create' && incomingId) {location.replace(QA.jobUrl(incomingId));return;}
       initClient();
@@ -254,6 +263,7 @@
             const email=document.getElementById('email').value.trim();
             const password=document.getElementById('password').value;
             const confirm=document.getElementById('confirmPassword').value;
+            if(password.length<8) throw new Error('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
             if(password!==confirm) throw new Error('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
             const {data:signup,error:err}=await QA.client.auth.signUp({email,password,options:{emailRedirectTo:QA.pageUrl('login',{confirmed:'1'}),data:{qa_signup:'1',display_name,department}}});
             if(err) throw err;
@@ -415,7 +425,21 @@
         start=new Date(`${y}-${String(m).padStart(2,'0')}-01T00:00:00+07:00`);
         end=new Date(Date.UTC(period==='year'?y+1:y,period==='year'?0:m,1)-7*3600000);
       }
-      const [settings,rows]=await Promise.all([api.getSettings(),rpc('qa_dashboard',{p_start:start.toISOString(),p_end:end.toISOString()})]);
+      const settings=await api.getSettings();
+      let rows=[];
+      if(['system_admin','department_admin'].includes(QA.profile?.role)) {
+        const detail=await rpc('qa_dashboard_export',{p_start:start.toISOString(),p_end:end.toISOString()});
+        const grouped=new Map();
+        for(const job of detail||[]) {
+          const department=String(job.to_department||'').trim()||'-';
+          const status=String(job.status||'').trim().toUpperCase()||'OTHER';
+          const k=department+'\u0000'+status;
+          grouped.set(k,(grouped.get(k)||0)+1);
+        }
+        rows=[...grouped.entries()].map(([k,total])=>{const [department,status]=k.split('\u0000');return {department,status,total};});
+      } else {
+        rows=await rpc('qa_dashboard',{p_start:start.toISOString(),p_end:end.toISOString()});
+      }
       const statuses=['OPEN','IN_PROGRESS','WAITING_REVIEW','REWORK','CLOSED','CANCELLED'];
       const map=new Map();
       function add(code,name=code){if(!map.has(code))map.set(code,{code,name,displayName:name===code?code:code+' - '+name,statusCounts:Object.fromEntries(statuses.map(s=>[s,0])),other:0,total:0});return map.get(code);}
@@ -484,6 +508,16 @@
     acceptJob(jobId,data={}){return mutate('ACCEPT',jobId,{acceptComment:String(data.acceptComment||'')},[]);},
     saveCorrectiveAction(data){return mutate(data.submitToQA===true?'SUBMIT':'SAVE',data.jobId,data,data.files||[]);},
     saveQaVerification(data){return mutate('VERIFY',data.jobId,data,[]);},
+    async unlinkLine(){return await rpc('qa_unlink_line',{});},
+    async createReportLinks(storagePath,fileName){
+      if(!storagePath) throw new Error('REPORT_STORAGE_PATH_REQUIRED');
+      const bucket=cfg.reportBucket||'qa-reports';
+      const expires=Math.max(60,Math.min(3600,Number(cfg.signedUrlSeconds)||900));
+      const preview=await QA.client.storage.from(bucket).createSignedUrl(storagePath,expires);
+      if(preview.error) throw preview.error;
+      const download=await QA.client.storage.from(bucket).createSignedUrl(storagePath,expires,{download:fileName||true});
+      return {previewUrl:preview.data?.signedUrl||'',downloadUrl:download.error?'':(download.data?.signedUrl||'')};
+    },
     async saveAnnotatedImage(image,blob){
       if(!(blob instanceof Blob) || blob.type!=='image/png') throw new Error('ANNOTATION_IMAGE_REQUIRED');
       if(!image?.attachmentId) throw new Error('ATTACHMENT_REQUIRED');
@@ -493,7 +527,7 @@
       const {error:uploadError}=await QA.client.storage.from(cfg.imageBucket).upload(path,blob,{contentType:'image/png',upsert:false,cacheControl:'3600'});
       if(uploadError) throw uploadError;
       const {data,error}=await QA.client.rpc('qa_save_image_annotation',{p_attachment_id:image.attachmentId,p_storage_path:path,p_file_name:fileName,p_mime_type:'image/png',p_size_bytes:blob.size});
-      if(error) throw error;
+      if(error){try{await QA.client.storage.from(cfg.imageBucket).remove([path]);}catch{}throw error;}
       return data;
     },
     async exportJobPdf(jobId){if(!QA.exportReport)throw new Error('report.js did not load');return QA.exportReport(jobId);}

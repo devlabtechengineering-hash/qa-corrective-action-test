@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA job page V37.1: workflow tracker. Retains navigation V37.1 and PDF V37.1. -->
+  <!-- QA job page V37.1.1: workflow tracker. Retains navigation V37.1.1 and PDF V37.1.1. -->
   <meta name="qa-job-version" content="33.2.0">
   <meta name="qa-pdf-version" content="33.1.1">
   <meta name="qa-page" content="job">
@@ -9,8 +9,8 @@
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=37.1"></script>
-  <script src="navigation.js?v=37.1"></script>
+  <script src="supabase-api.js?v=37.1.1"></script>
+  <script src="navigation.js?v=37.1.1"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -355,7 +355,7 @@
     }
   </style>
 
-  <!-- Job progress tracker V37.1: presentation only; SQL remains authoritative. -->
+  <!-- Job progress tracker V37.1.1: presentation only; SQL remains authoritative. -->
   <style id="qa-progress-style">
     #jobProgressCard {
       --qpt-accent: #b45309;
@@ -481,7 +481,7 @@
     }
   </style>
 
-  <script src="report.js?v=34.0"></script>
+  <script src="report.js?v=37.1.1"></script>
 </head>
 
 <body class="qa-auth-loading">
@@ -533,11 +533,11 @@
     </div>
 
 
-    <!-- JOB PROGRESS V37.1: not a form, not a status-changing control. -->
+    <!-- JOB PROGRESS V37.1.1: not a form, not a status-changing control. -->
     <section id="jobProgressCard" class="card" aria-labelledby="jobProgressHeading"
              aria-describedby="jobProgressFootnote" data-status="UNKNOWN" data-motion="running">
       <div class="qpt-topline">
-        <p class="qpt-kicker">WORKFLOW <span class="qpt-version">V37.1</span></p>
+        <p class="qpt-kicker">WORKFLOW <span class="qpt-version">V37.1.1</span></p>
         <span id="jobProgressStage" class="qpt-mini"></span>
       </div>
       <h2 id="jobProgressHeading">ติดตามสถานะใบงาน</h2>
@@ -1008,6 +1008,8 @@
     QA.setStatusBadge(status, currentJob.status);
     updateRollbackButton();
     updateOwnerActions();
+    const exportPdfButton=document.getElementById('exportPdfBtn');
+    if(exportPdfButton) exportPdfButton.style.display=QA.profile?.role==='viewer'?'none':'inline-block';
     document.title = currentJob.jobId + ' | ' + QA.statusInfo(currentJob.status).label + ' | Complain & Action Tracking';
 
     document.getElementById(
@@ -1049,7 +1051,7 @@ renderCorrectiveHistory(
   }
 
 
-  /* Job progress V37.1.
+  /* Job progress V37.1.1.
      Uses the confirmed job snapshot only. No timers, network requests, new status
      values, database writes, or LINE calls are made by this presentation layer.
      REWORK returns to the correction step; it is not a milestone toward closure.
@@ -1999,8 +2001,14 @@ function enableCorrectiveForm() {
   let qaImageEditor=null;
   function canAnnotateImage(){
     if(!currentJob||!QA.profile) return false;
-    return QA.profile.role==='system_admin' || currentJob.createdBy===QA.profile.user_id ||
-      (QA.profile.role==='department_admin' && [currentJob.fromDepartment,currentJob.toDepartment].includes(QA.profile.department));
+    const role=QA.profile.role,status=currentJob.status,dept=QA.profile.department;
+    if(role==='system_admin') return true;
+    if(role==='user') return status==='OPEN' && currentJob.createdBy===QA.profile.user_id;
+    if(role==='department_admin') {
+      return (dept===currentJob.toDepartment && ['IN_PROGRESS','REWORK'].includes(status)) ||
+        (dept===currentJob.fromDepartment && status==='WAITING_REVIEW');
+    }
+    return false;
   }
   function ensureImageEditor(){
     if(qaImageEditor) return qaImageEditor;
@@ -2323,59 +2331,47 @@ async function submitQaResult(approved) {
 
   function openPdfInBrowserViewer(result) {
 
-    if (
-      !pdfPreviewWindow ||
-      pdfPreviewWindow.closed
-    ) {
-      showMessage(
-        'ไม่สามารถเปิดหน้าต่าง PDF ได้ กรุณาอนุญาต Pop-ups แล้วลองใหม่',
-        false
-      );
+    if (!pdfPreviewWindow || pdfPreviewWindow.closed) {
+      showMessage('ไม่สามารถเปิดหน้าต่าง PDF ได้ กรุณาอนุญาต Pop-ups แล้วลองใหม่',false);
       return;
     }
 
     try {
+      // V37.1.1: prefer an authenticated HTTPS signed URL from private Storage.
+      // This works more reliably than blob: URLs on iPhone/iPad/Android browsers.
+      if (result && result.previewUrl) {
+        const mobilePdf=(navigator.maxTouchPoints||0)>0 ||
+          (window.matchMedia&&window.matchMedia('(pointer: coarse)').matches) ||
+          /Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+        if (mobilePdf) {
+          const d=pdfPreviewWindow.document;
+          d.open();
+          d.write('<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PDF</title></head><body></body></html>');
+          d.close();
+          const body=d.body;
+          body.style.cssText='font-family:Arial,Tahoma,sans-serif;background:#f4f6f8;color:#1f2937;margin:0;padding:24px;';
+          const card=d.createElement('div');card.style.cssText='max-width:520px;margin:8vh auto;background:white;border:1px solid #e2e8f0;border-radius:14px;padding:22px;box-shadow:0 8px 30px #0001';
+          const h=d.createElement('h2');h.textContent='PDF พร้อมแล้ว';h.style.marginTop='0';
+          const note=d.createElement('p');note.textContent='เลือกเปิดดู PDF หรือดาวน์โหลดไฟล์ลงอุปกรณ์';
+          const open=d.createElement('a');open.href=result.previewUrl;open.textContent='เปิด PDF';open.style.cssText='display:block;text-align:center;padding:13px;border-radius:9px;background:#111827;color:white;text-decoration:none;font-weight:700;margin-top:14px';
+          const download=d.createElement('a');download.href=result.downloadUrl||result.previewUrl;download.textContent='ดาวน์โหลด PDF';download.style.cssText='display:block;text-align:center;padding:13px;border-radius:9px;background:#fff;color:#111827;text-decoration:none;font-weight:700;border:1px solid #cbd5e1;margin-top:10px';
+          card.append(h,note,open,download);body.append(card);
+        } else {
+          pdfPreviewWindow.location.replace(result.previewUrl);
+        }
+        return;
+      }
 
-      const bytes =
-        base64ToUint8Array(result.base64 || '');
-
-      const blob =
-        new Blob(
-          [bytes],
-          { type: 'application/pdf' }
-        );
-
-      const pdfUrl =
-        URL.createObjectURL(blob);
-
-      /*
-        เปลี่ยนแท็บที่เปิดรอไว้ให้เป็นไฟล์ application/pdf โดยตรง
-        Chrome/Edge จะเปิด Browser PDF Viewer ของตัวเอง
-        ซึ่งมี Download / Print / Zoom เหมือนตัวอย่าง
-      */
+      // Compatibility fallback for older report responses.
+      const bytes=base64ToUint8Array(result.base64 || '');
+      const blob=new Blob([bytes],{type:'application/pdf'});
+      const pdfUrl=URL.createObjectURL(blob);
       pdfPreviewWindow.location.replace(pdfUrl);
-
-      // ไม่ revoke ทันที เพราะ Browser Viewer ยังต้องอ่าน Blob นี้
-      setTimeout(function() {
-        try {
-          URL.revokeObjectURL(pdfUrl);
-        } catch (e) {}
-      }, 10 * 60 * 1000);
-
+      setTimeout(function(){try{URL.revokeObjectURL(pdfUrl);}catch(e){}},10*60*1000);
     } catch (error) {
-
-      try {
-        pdfPreviewWindow.close();
-      } catch (e) {}
-
-      showMessage(
-        'เปิด PDF ไม่สำเร็จ: ' +
-        error.message,
-        false
-      );
-
+      try {pdfPreviewWindow.close();} catch (e) {}
+      showMessage('เปิด PDF ไม่สำเร็จ: '+error.message,false);
     }
-
   }
 
   function base64ToUint8Array(base64) {
@@ -2407,7 +2403,7 @@ async function submitQaResult(approved) {
       wrap.append(title,grid);preview.before(wrap);}
     // Keep the original Export PDF button only.
     const exportButton=document.getElementById('exportPdfBtn');
-    if(exportButton) exportButton.title='PDF V37.1';
+    if(exportButton) exportButton.title='PDF V37.1.1';
   });
 </script>
 </body>

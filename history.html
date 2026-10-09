@@ -1,1 +1,16 @@
-<!doctype html><html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>กำลังเปิดหน้าใบงาน</title><script>location.replace('work.html'+location.search+location.hash);</script></head><body>กำลังเปิดหน้าใบงาน...</body></html>
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>กำลังเปิดหน้าใบงาน...</title>
+  <script>
+    (function(){
+      var target=new URL('work.html',location.href);
+      target.search=location.search;
+      location.replace(target.href);
+    })();
+  </script>
+</head>
+<body><p>กำลังเปิดหน้าใบงาน...</p></body>
+</html>

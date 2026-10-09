@@ -7,8 +7,8 @@
   <title>Profile</title>
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=36.1"></script>
-  <script src="navigation.js?v=36.1"></script>
+  <script src="supabase-api.js?v=37.1.1"></script>
+  <script src="navigation.js?v=37.1.1"></script>
   <style>
     *{box-sizing:border-box}body{margin:0;font-family:Arial,Tahoma,sans-serif;background:#f4f6f8;color:#1f2937}
     .page{max-width:820px;margin:auto;padding:30px 20px}.head{margin-bottom:18px}.head h1{margin:0 0 6px}.muted{color:#64748b}
@@ -33,7 +33,7 @@
   <section class="card">
     <h2 style="margin-top:0">LINE Notification</h2>
     <p class="note">ใช้สำหรับรับการแจ้งเตือนจาก Complain Bot เท่านั้น การ Login เข้าเว็บยังใช้ Email + Password เหมือนเดิม</p>
-    <button id="createCodeBtn" type="button">สร้างรหัสเชื่อมต่อ LINE</button>
+    <button id="createCodeBtn" type="button">สร้างรหัสเชื่อมต่อ LINE</button> <button id="unlinkLineBtn" type="button" style="background:#b91c1c;margin-left:8px">ยกเลิกการเชื่อมต่อ LINE</button>
     <div id="error" class="error"></div>
 
     <div id="linkBox" class="line-box hidden">
@@ -55,6 +55,7 @@ async function initProfilePage(){
   document.getElementById('department').textContent=p.department||'ไม่สังกัดแผนก';
   document.getElementById('createCodeBtn').onclick=createLinkCode;
   document.getElementById('copyBtn').onclick=copyCommand;
+  document.getElementById('unlinkLineBtn').onclick=unlinkLine;
 }
 async function createLinkCode(){
   const btn=document.getElementById('createCodeBtn'),err=document.getElementById('error');
@@ -75,6 +76,19 @@ async function copyCommand(){
   catch{document.getElementById('copyBtn').textContent='คัดลอกไม่สำเร็จ'}
   setTimeout(()=>document.getElementById('copyBtn').textContent='คัดลอกคำสั่ง',1500);
 }
+
+async function unlinkLine(){
+  const btn=document.getElementById('unlinkLineBtn'),err=document.getElementById('error');
+  if(!confirm('ยืนยันยกเลิกการเชื่อมต่อ LINE ของบัญชีนี้?')) return;
+  btn.disabled=true;err.textContent='';
+  try{
+    await QA.api.unlinkLine();
+    document.getElementById('linkBox').classList.add('hidden');
+    err.className='success';err.textContent='ยกเลิกการเชื่อมต่อ LINE แล้ว สามารถสร้างรหัสใหม่เพื่อเชื่อมอีกครั้งได้';
+  }catch(e){err.className='error';err.textContent=QA.errorOf(e).message}
+  finally{btn.disabled=false}
+}
+
 </script>
 </body>
 </html>
