@@ -10,7 +10,7 @@
   cfg.signedUrlSeconds=Math.max(60,Math.min(3600,Number(cfg.signedUrlSeconds)||900));
   cfg.maxImageBytes=Math.max(1,Number(cfg.maxImageBytes)||5*1024*1024);
   cfg.maxFilesPerSave=Math.max(1,Math.min(20,Number(cfg.maxFilesPerSave)||20));
-  const QA = window.QA = {profile: null, client: null, version: '37.1.1.3'};
+  const QA = window.QA = {profile: null, client: null, version: '37.1.1.4'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -167,14 +167,20 @@
     else next=QA.pageUrl('work');
     return QA.pageUrl('login',{next});
   };
+  function withTimeout(promise, ms, code='REQUEST_TIMEOUT') {
+    let timer;
+    const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(code)),ms);});
+    return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+  }
   function initClient() {
     if(location.protocol==='file:') throw new Error('Open via http://localhost, not file://. See 00_START_HERE_TH.txt.');
     if(!window.supabase?.createClient) throw new Error('Supabase library could not load. Check your Internet/CDN connection.');
     if(!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(cfg.supabaseUrl||'') || cfg.supabaseUrl.includes('YOUR_PROJECT'))
       throw new Error('Edit supabaseUrl in config.js first (project HTTPS URL).');
-    if(!/^sb_publishable_/.test(cfg.publishableKey||'') || cfg.publishableKey.includes('REPLACE'))
-      throw new Error('Edit publishableKey in config.js. Only sb_publishable_ keys are accepted.');
-    QA.client=window.supabase.createClient(cfg.supabaseUrl,cfg.publishableKey,{
+    const clientKey=String(cfg.publishableKey||cfg.supabaseAnonKey||cfg.anonKey||'').trim();
+    if(!clientKey || clientKey.includes('REPLACE') || clientKey.includes('YOUR_'))
+      throw new Error('Supabase public key is missing in config.js. Use publishableKey or supabaseAnonKey.');
+    QA.client=window.supabase.createClient(cfg.supabaseUrl,clientKey,{
       auth:{persistSession:true,storage:window.sessionStorage,autoRefreshToken:true,detectSessionInUrl:false}
     });
   }
@@ -193,8 +199,6 @@
   };
   async function init() {
     try {
-      // Old bookmarks that still point to index.html?job=... must open details,
-      // not display the new-notice form. Detect a wrongly uploaded HTML file too.
       const actualPage=document.querySelector('meta[name="qa-page"]')?.content;
       const routePage=pageName(),incomingId=QA.jobIdFromUrl();
       if(actualPage && routePage && actualPage!==routePage) {
@@ -203,39 +207,54 @@
       }
       if(routePage==='create' && incomingId) {location.replace(QA.jobUrl(incomingId));return;}
       initClient();
-      const {data,error}=await QA.client.auth.getSession(); if(error) throw error;
+
+      // Login must be usable immediately. Do not wait for getSession() before binding the form.
       if(isLogin) {
         document.body.classList.remove('qa-auth-loading');
         const loginParams=new URLSearchParams(location.search);
         const confirmedNote=document.getElementById('emailConfirmedNote');
         if(confirmedNote && loginParams.get('confirmed')==='1') confirmedNote.hidden=false;
         const form=document.getElementById('loginForm');
+        const box=document.getElementById('loginError');
+        if(!form) throw new Error('LOGIN_FORM_NOT_FOUND');
         form.addEventListener('submit',async e=>{
-          e.preventDefault();const btn=document.getElementById('loginBtn');btn.disabled=true;
-          document.getElementById('loginError').textContent='';
+          e.preventDefault();
+          const btn=document.getElementById('loginBtn');
+          btn.disabled=true;
+          box.style.color='#475569';
+          box.textContent='กำลังเข้าสู่ระบบ...';
           try {
             const email=document.getElementById('email').value.trim();
             const password=document.getElementById('password').value;
-            const {data:auth,error:err}=await QA.client.auth.signInWithPassword({email,password});
+            const {data:auth,error:err}=await withTimeout(
+              QA.client.auth.signInWithPassword({email,password}),15000,'LOGIN_TIMEOUT'
+            );
             if(err) throw err;
-            const profile=await readProfile(auth.user.id);
+            if(!auth?.user?.id) throw new Error('LOGIN_NO_USER');
+            const profile=await withTimeout(readProfile(auth.user.id),10000,'PROFILE_TIMEOUT');
             document.getElementById('password').value='';
-            if(profile.must_change_password){
-              location.replace(QA.pageUrl('forcePassword'));
-            }else{
-              location.replace(QA.pageUrl('work'));
-            }
-          } catch(err) {document.getElementById('loginError').textContent=errorOf(err).message;}
-          finally {btn.disabled=false;}
+            box.textContent='เข้าสู่ระบบสำเร็จ กำลังเปิดหน้าใบงาน...';
+            if(profile.must_change_password) location.replace(QA.pageUrl('forcePassword'));
+            else location.replace(QA.pageUrl('work'));
+          } catch(err) {
+            box.style.color='#b91c1c';
+            const code=String(err?.message||err||'');
+            if(code==='LOGIN_TIMEOUT') box.textContent='การเชื่อมต่อ Supabase ใช้เวลานานเกินไป กรุณาตรวจ Internet แล้วลองใหม่';
+            else if(code==='PROFILE_TIMEOUT') box.textContent='เข้าสู่ระบบได้ แต่โหลดข้อมูลผู้ใช้ไม่สำเร็จ กรุณาลองใหม่';
+            else box.textContent=errorOf(err).message;
+          } finally {btn.disabled=false;}
         });
         const signupLink=document.getElementById('signupLink');
         if(signupLink) signupLink.href=QA.pageUrl('signup');
-        readyResolve(); return;
+        readyResolve();
+        return;
       }
+
+      // Signup is public and should not wait for an auth-session check either.
       if(isSignup) {
         document.body.classList.remove('qa-auth-loading');
         try {
-          const depts=await rpc('qa_public_departments',{});
+          const depts=await withTimeout(rpc('qa_public_departments',{}),10000,'DEPARTMENT_LOAD_TIMEOUT');
           const sel=document.getElementById('department');
           for(const d of depts||[]){const o=document.createElement('option');o.value=d.code;o.textContent=d.code;sel.append(o);}
         } catch(e){document.getElementById('signupError').textContent=errorOf(e).message;}
@@ -249,7 +268,7 @@
           if(!code||!name){box.textContent='กรุณากรอกรหัสและชื่อแผนก';return;}
           deptRequestBtn.disabled=true;
           try{
-            const result=await rpc('qa_request_department',{p_code:code,p_name:name,p_requester_name:requesterName,p_requester_email:requesterEmail});
+            const result=await withTimeout(rpc('qa_request_department',{p_code:code,p_name:name,p_requester_name:requesterName,p_requester_email:requesterEmail}),10000,'DEPARTMENT_REQUEST_TIMEOUT');
             if(!result?.success) throw new Error('ส่งคำขอไม่สำเร็จ');
             box.style.color='#166534';box.textContent='ส่งคำขอเพิ่มแผนก '+result.code+' แล้ว กรุณารอ System Admin อนุมัติ แล้วกลับมารีเฟรชหน้านี้เพื่อสมัครสมาชิก';
           }catch(err){box.style.color='#b91c1c';box.textContent=errorOf(err).message;}finally{deptRequestBtn.disabled=false;}
@@ -265,7 +284,7 @@
             const confirm=document.getElementById('confirmPassword').value;
             if(password.length<8) throw new Error('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
             if(password!==confirm) throw new Error('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
-            const {data:signup,error:err}=await QA.client.auth.signUp({email,password,options:{emailRedirectTo:QA.pageUrl('login',{confirmed:'1'}),data:{qa_signup:'1',display_name,department}}});
+            const {data:signup,error:err}=await withTimeout(QA.client.auth.signUp({email,password,options:{emailRedirectTo:QA.pageUrl('login',{confirmed:'1'}),data:{qa_signup:'1',display_name,department}}}),15000,'SIGNUP_TIMEOUT');
             if(err) throw err;
             document.getElementById('signupForm').hidden=true;
             const success=document.getElementById('signupSuccess');
@@ -278,10 +297,14 @@
             }
           }catch(err){box.textContent=errorOf(err).message;}finally{btn.disabled=false;}
         });
-        readyResolve(); return;
+        readyResolve();
+        return;
       }
+
+      const {data,error}=await withTimeout(QA.client.auth.getSession(),10000,'AUTH_SESSION_TIMEOUT');
+      if(error) throw error;
       if(!data.session) {location.replace(QA.loginUrl());return;}
-      QA.profile=await readProfile(data.session.user.id);
+      QA.profile=await withTimeout(readProfile(data.session.user.id),10000,'PROFILE_TIMEOUT');
       if(QA.profile.must_change_password && currentPage!=='forcePassword'){
         location.replace(QA.pageUrl('forcePassword'));
         return;
@@ -290,7 +313,6 @@
       document.body.classList.remove('qa-auth-loading');
       QA.applyPermissions();
       QA.client.auth.onAuthStateChange((event,session)=>{
-        // Keep this callback synchronous: async Auth calls here can deadlock SDK locks.
         if(event==='SIGNED_OUT') {QA.forgetJob();location.replace(QA.loginUrl());}
         if(event==='SIGNED_IN' && session && session.user.id!==QA.profile.user_id) location.reload();
       });
