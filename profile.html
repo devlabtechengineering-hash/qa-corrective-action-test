@@ -7,15 +7,16 @@
   <title>Profile</title>
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=37.1.1.5"></script>
-  <script src="navigation.js?v=37.1.1"></script>
+  <script src="supabase-api.js?v=37.1.2"></script>
+  <script src="navigation.js?v=37.1.2"></script>
   <style>
     *{box-sizing:border-box}body{margin:0;font-family:Arial,Tahoma,sans-serif;background:#f4f6f8;color:#1f2937}
     .page{max-width:820px;margin:auto;padding:30px 20px}.head{margin-bottom:18px}.head h1{margin:0 0 6px}.muted{color:#64748b}
     .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:22px;margin-bottom:16px;box-shadow:0 4px 14px rgba(15,23,42,.04)}
     .row{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #f1f5f9}.row:last-child{border-bottom:0}.label{font-weight:800;color:#475569}
     .line-box{margin-top:14px;padding:16px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc}.code{font-size:32px;font-weight:900;letter-spacing:5px;margin:8px 0}.hidden{display:none}
-    button{border:0;border-radius:9px;background:#111827;color:#fff;padding:11px 16px;font-weight:800;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}.copy{background:#475569;margin-left:6px}
+    button,.btn-link{border:0;border-radius:9px;background:#111827;color:#fff;padding:11px 16px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-block}button:disabled{opacity:.55;cursor:not-allowed}.copy{background:#475569;margin-left:6px}
+    .line-add{background:#06c755}.line-refresh{background:#475569}.line-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0}.status-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;font-weight:800;font-size:14px}.status-on{background:#dcfce7;color:#166534}.status-off{background:#f1f5f9;color:#475569}.status-loading{background:#fef3c7;color:#92400e}.line-meta{font-size:13px;color:#64748b;line-height:1.6;margin:6px 0 14px}.line-actions{display:flex;gap:8px;flex-wrap:wrap}.line-actions button,.line-actions .btn-link{margin:0}
     .note{font-size:14px;line-height:1.7;color:#475569}.error{color:#b91c1c;margin-top:10px;white-space:pre-wrap}.success{color:#166534;margin-top:10px}
     @media(max-width:600px){.page{padding:22px 14px}.row{grid-template-columns:1fr;gap:3px}.code{font-size:27px}}
   </style>
@@ -33,14 +34,25 @@
   <section class="card">
     <h2 style="margin-top:0">LINE Notification</h2>
     <p class="note">ใช้สำหรับรับการแจ้งเตือนจาก Complain Bot เท่านั้น การ Login เข้าเว็บยังใช้ Email + Password เหมือนเดิม</p>
-    <button id="createCodeBtn" type="button">สร้างรหัสเชื่อมต่อ LINE</button> <button id="unlinkLineBtn" type="button" style="background:#b91c1c;margin-left:8px">ยกเลิกการเชื่อมต่อ LINE</button>
+
+    <div class="line-status">
+      <span id="lineStatusBadge" class="status-badge status-loading">กำลังตรวจสอบสถานะ...</span>
+      <button id="refreshLineBtn" class="line-refresh" type="button">ตรวจสอบสถานะ</button>
+    </div>
+    <div id="lineMeta" class="line-meta"></div>
+
+    <div class="line-actions">
+      <a id="addLineBtn" class="btn-link line-add" href="https://lin.ee/9nyAoID" target="_blank" rel="noopener noreferrer">Add Line รับการแจ้งเตือน</a>
+      <button id="createCodeBtn" type="button">สร้างรหัสเชื่อมต่อ LINE</button>
+      <button id="unlinkLineBtn" type="button" style="background:#b91c1c">ยกเลิกการเชื่อมต่อ LINE</button>
+    </div>
     <div id="error" class="error"></div>
 
     <div id="linkBox" class="line-box hidden">
       <div class="note">ส่งข้อความนี้หา <b>Complain Bot</b> ในแชทส่วนตัวภายใน 10 นาที:</div>
       <div id="linkCommand" class="code">LINK ------</div>
       <button id="copyBtn" class="copy" type="button">คัดลอกคำสั่ง</button>
-      <div class="note" style="margin-top:12px">เมื่อ Bot ตอบว่า “เชื่อมต่อ LINE สำเร็จ” แสดงว่าเสร็จแล้ว</div>
+      <div class="note" style="margin-top:12px">เมื่อ Bot ตอบว่า “เชื่อมต่อ LINE สำเร็จ” ให้กลับมาหน้านี้ ระบบจะตรวจสอบสถานะให้อัตโนมัติ หรือกด “ตรวจสอบสถานะ”</div>
     </div>
   </section>
 </main>
@@ -56,10 +68,44 @@ async function initProfilePage(){
   document.getElementById('createCodeBtn').onclick=createLinkCode;
   document.getElementById('copyBtn').onclick=copyCommand;
   document.getElementById('unlinkLineBtn').onclick=unlinkLine;
+  document.getElementById('refreshLineBtn').onclick=refreshLineStatus;
+  const addUrl=String(window.QA_CONFIG?.lineAddFriendUrl||'https://lin.ee/9nyAoID').trim();
+  const addBtn=document.getElementById('addLineBtn');
+  if(/^https:\/\//i.test(addUrl)) addBtn.href=addUrl; else addBtn.hidden=true;
+  await refreshLineStatus();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLineStatus()});
+}
+function formatLineDate(value){
+  if(!value)return '';
+  try{return new Intl.DateTimeFormat('th-TH',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Bangkok'}).format(new Date(value))}
+  catch{return String(value)}
+}
+async function refreshLineStatus(){
+  const badge=document.getElementById('lineStatusBadge'),meta=document.getElementById('lineMeta');
+  const unlink=document.getElementById('unlinkLineBtn'),refresh=document.getElementById('refreshLineBtn');
+  badge.className='status-badge status-loading';badge.textContent='กำลังตรวจสอบสถานะ...';meta.textContent='';refresh.disabled=true;
+  try{
+    const st=await QA.api.getLineStatus();
+    const linked=!!st?.linked;
+    badge.className='status-badge '+(linked?'status-on':'status-off');
+    badge.textContent=linked?'● เชื่อมต่อแล้ว':'○ ยังไม่ได้เชื่อม';
+    unlink.hidden=!linked;
+    if(linked){
+      const parts=[];
+      if(st.line_user_masked)parts.push('LINE: '+st.line_user_masked);
+      if(st.linked_at)parts.push('เชื่อมเมื่อ: '+formatLineDate(st.linked_at));
+      meta.textContent=parts.join('  •  ');
+      document.getElementById('linkBox').classList.add('hidden');
+    }else meta.textContent='กด Add Line รับการแจ้งเตือน → เพิ่มเพื่อน → กลับมาสร้างรหัส LINK เพื่อเชื่อมบัญชี';
+    return st;
+  }catch(e){
+    badge.className='status-badge status-off';badge.textContent='ตรวจสอบสถานะไม่สำเร็จ';
+    meta.textContent=QA.errorOf(e).message;unlink.hidden=true;
+  }finally{refresh.disabled=false}
 }
 async function createLinkCode(){
   const btn=document.getElementById('createCodeBtn'),err=document.getElementById('error');
-  btn.disabled=true;err.textContent='';
+  btn.disabled=true;err.className='error';err.textContent='';
   try{
     const {data,error}=await QA.client.rpc('qa_create_line_link_code');
     if(error) throw error;
@@ -85,6 +131,7 @@ async function unlinkLine(){
     await QA.api.unlinkLine();
     document.getElementById('linkBox').classList.add('hidden');
     err.className='success';err.textContent='ยกเลิกการเชื่อมต่อ LINE แล้ว สามารถสร้างรหัสใหม่เพื่อเชื่อมอีกครั้งได้';
+    await refreshLineStatus();
   }catch(e){err.className='error';err.textContent=QA.errorOf(e).message}
   finally{btn.disabled=false}
 }

@@ -1,4 +1,4 @@
-/* QA V37.1.1 navigation/status patch (2026-09-24).
+/* QA V37.1.2 navigation/status patch (2026-09-24).
    QA V33 adapter. No Apps Script runtime is required.
    Original callback-shaped calls are preserved as QA.run; the implementation is Supabase.
    Mutation permissions and transitions are enforced in SQL, not by these UI checks. */
@@ -15,7 +15,7 @@
     maxImageBytes: Math.max(1, Number(rawCfg.maxImageBytes) || 5 * 1024 * 1024),
     maxFilesPerSave: Math.max(1, Math.min(20, Number(rawCfg.maxFilesPerSave) || 20))
   };
-  const QA = window.QA = {profile: null, client: null, version: '37.1.1'};
+  const QA = window.QA = {profile: null, client: null, version: '37.1.2'};
   const versions = new Map();
   let busy = false;
   let readyResolve, readyReject;
@@ -208,7 +208,7 @@
       const routePage=pageName(),incomingId=QA.jobIdFromUrl();
       if(actualPage && routePage && actualPage!==routePage) {
         throw new Error('HTML_PAGE_MISMATCH: '+location.pathname+
-          ' contains the '+actualPage+' page. Upload the matching V37.1.1 HTML file to GitHub.');
+          ' contains the '+actualPage+' page. Upload the matching V37.1.2 HTML file to GitHub.');
       }
       if(routePage==='create' && incomingId) {location.replace(QA.jobUrl(incomingId));return;}
       initClient();
@@ -535,6 +535,7 @@
     acceptJob(jobId,data={}){return mutate('ACCEPT',jobId,{acceptComment:String(data.acceptComment||'')},[]);},
     saveCorrectiveAction(data){return mutate(data.submitToQA===true?'SUBMIT':'SAVE',data.jobId,data,data.files||[]);},
     saveQaVerification(data){return mutate('VERIFY',data.jobId,data,[]);},
+    async getLineStatus(){return await rpc('qa_get_line_status',{});},
     async unlinkLine(){return await rpc('qa_unlink_line',{});},
     async createReportLinks(storagePath,fileName){
       if(!storagePath) throw new Error('REPORT_STORAGE_PATH_REQUIRED');
