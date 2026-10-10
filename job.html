@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <!-- QA job page V37.1.2: workflow tracker. Retains navigation V37.1.2 and PDF V37.1.2. -->
+  <!-- QA job page V37.1.4: workflow tracker. Retains navigation V37.1.4 and PDF V37.1.4. -->
   <meta name="qa-job-version" content="33.2.0">
   <meta name="qa-pdf-version" content="33.1.1">
   <meta name="qa-page" content="job">
@@ -9,8 +9,8 @@
   <meta name="referrer" content="no-referrer">
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-api.js?v=37.1.2"></script>
-  <script src="navigation.js?v=37.1.2"></script>
+  <script src="supabase-api.js?v=37.1.4"></script>
+  <script src="navigation.js?v=37.1.4"></script>
   <style>.qa-auth-loading > :not(script):not(style){display:none!important} .qa-app-content{min-width:0}</style>
 
   <base target="_self">
@@ -355,7 +355,7 @@
     }
   </style>
 
-  <!-- Job progress tracker V37.1.2: presentation only; SQL remains authoritative. -->
+  <!-- Job progress tracker V37.1.4: presentation only; SQL remains authoritative. -->
   <style id="qa-progress-style">
     #jobProgressCard {
       --qpt-accent: #b45309;
@@ -481,7 +481,7 @@
     }
   </style>
 
-  <script src="report.js?v=37.1.2"></script>
+  <script src="report.js?v=37.1.4"></script>
 </head>
 
 <body class="qa-auth-loading">
@@ -533,11 +533,11 @@
     </div>
 
 
-    <!-- JOB PROGRESS V37.1.2: not a form, not a status-changing control. -->
+    <!-- JOB PROGRESS V37.1.4: not a form, not a status-changing control. -->
     <section id="jobProgressCard" class="card" aria-labelledby="jobProgressHeading"
              aria-describedby="jobProgressFootnote" data-status="UNKNOWN" data-motion="running">
       <div class="qpt-topline">
-        <p class="qpt-kicker">WORKFLOW <span class="qpt-version">V37.1.2</span></p>
+        <p class="qpt-kicker">WORKFLOW <span class="qpt-version">V37.1.4</span></p>
         <span id="jobProgressStage" class="qpt-mini"></span>
       </div>
       <h2 id="jobProgressHeading">ติดตามสถานะใบงาน</h2>
@@ -1051,7 +1051,7 @@ renderCorrectiveHistory(
   }
 
 
-  /* Job progress V37.1.2.
+  /* Job progress V37.1.4.
      Uses the confirmed job snapshot only. No timers, network requests, new status
      values, database writes, or LINE calls are made by this presentation layer.
      REWORK returns to the correction step; it is not a milestone toward closure.
@@ -2337,7 +2337,7 @@ async function submitQaResult(approved) {
     }
 
     try {
-      // V37.1.2: prefer an authenticated HTTPS signed URL from private Storage.
+      // V37.1.4: prefer an authenticated HTTPS signed URL from private Storage.
       // This works more reliably than blob: URLs on iPhone/iPad/Android browsers.
       if (result && result.previewUrl) {
         const mobilePdf=(navigator.maxTouchPoints||0)>0 ||
@@ -2403,7 +2403,7 @@ async function submitQaResult(approved) {
       wrap.append(title,grid);preview.before(wrap);}
     // Keep the original Export PDF button only.
     const exportButton=document.getElementById('exportPdfBtn');
-    if(exportButton) exportButton.title='PDF V37.1.2';
+    if(exportButton) exportButton.title='PDF V37.1.4';
   });
 </script>
 </body>

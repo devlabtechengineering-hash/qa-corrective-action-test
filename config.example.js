@@ -4,7 +4,7 @@
 window.QA_CONFIG = {
   supabaseUrl: 'https://YOUR_PROJECT_REF.supabase.co',
   publishableKey: 'sb_publishable_REPLACE_ME',
-  lineAddFriendUrl: 'https://lin.ee/9nyAoID',
+  lineAddFriendUrl: 'https://lin.ee/WiIjIZp',
   imageBucket: 'qa-images',
   reportBucket: 'qa-reports',
   signedUrlSeconds: 900,
